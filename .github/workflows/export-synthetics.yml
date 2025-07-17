@@ -19,10 +19,28 @@ permissions:
 jobs:
   export-monitors:
     runs-on: ubuntu-latest
-    # Only run export after import if the import was in live mode (not dry-run)
-    if: github.event_name != 'workflow_run' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.inputs.dry_run == 'false')
+    # Run export in these cases:
+    # 1. Manual trigger or scheduled run
+    # 2. After successful import from push (always live)
+    # 3. After successful manual import (we'll assume it was live since dry-runs shouldn't need export)
+    if: |
+      github.event_name != 'workflow_run' || (
+        github.event_name == 'workflow_run' && 
+        github.event.workflow_run.conclusion == 'success'
+      )
     
     steps:
+    - name: Debug workflow run event
+      if: github.event_name == 'workflow_run'
+      run: |
+        echo "Workflow run event details:"
+        echo "Event name: ${{ github.event_name }}"
+        echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
+        echo "Workflow run event: ${{ github.event.workflow_run.event }}"
+        echo "Workflow run name: ${{ github.event.workflow_run.name }}"
+        echo "Workflow run status: ${{ github.event.workflow_run.status }}"
+        echo "Triggering workflow: ${{ github.event.workflow_run.workflow_id }}"
+    
     - name: Checkout repository
       uses: actions/checkout@v4
       with:

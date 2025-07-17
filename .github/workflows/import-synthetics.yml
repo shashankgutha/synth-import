@@ -113,8 +113,20 @@ jobs:
     
 
     
+    - name: Set import mode indicator
+      run: |
+        # Create a file to indicate the import mode for the export workflow
+        if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event.inputs.dry_run }}" = "false" ]; then
+          echo "LIVE_IMPORT=true" >> $GITHUB_ENV
+          echo "live" > /tmp/import_mode.txt
+        else
+          echo "LIVE_IMPORT=false" >> $GITHUB_ENV
+          echo "dry-run" > /tmp/import_mode.txt
+        fi
+        echo "Import mode: $(cat /tmp/import_mode.txt)"
+    
     - name: Create deployment summary
-      if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'false'
+      if: env.LIVE_IMPORT == 'true'
       run: |
         echo "## Synthetics Monitor Deployment Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -122,6 +134,7 @@ jobs:
         echo "- Kibana Space: ${{ github.event.inputs.space_id || 'default' }}" >> $GITHUB_STEP_SUMMARY
         echo "- Triggered by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
         echo "- Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "- Import Mode: Live" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Monitor Files Processed:**" >> $GITHUB_STEP_SUMMARY
         find monitors -name "*.json" -type f | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
