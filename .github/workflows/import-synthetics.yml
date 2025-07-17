@@ -1,0 +1,123 @@
+name: Import Synthetics Monitors
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (preview changes without applying)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      space_id:
+        description: 'Kibana space ID'
+        required: false
+        default: 'default'
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - 'monitors/**/*.json'
+      - '.github/scripts/import-synthetics-monitors.py'
+      - '.github/workflows/import-synthetics.yml'
+
+jobs:
+  import-monitors:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r .github/scripts/requirements.txt
+    
+    - name: Validate monitor files
+      run: |
+        echo "🔍 Validating monitor JSON files..."
+        find monitors -name "*.json" -type f | while read file; do
+          echo "Validating: $file"
+          python -m json.tool "$file" > /dev/null || {
+            echo "❌ Invalid JSON in $file"
+            exit 1
+          }
+        done
+        echo "✅ All JSON files are valid"
+    
+    - name: Import Synthetics Monitors (Dry Run)
+      if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true')
+      env:
+        KIBANA_URL: ${{ secrets.KIBANA_URL }}
+        KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
+        KIBANA_SPACE_ID: ${{ github.event.inputs.space_id || 'default' }}
+        DRY_RUN: 'true'
+      run: |
+        echo "🧪 Running import in DRY RUN mode..."
+        python .github/scripts/import-synthetics-monitors.py
+    
+    - name: Import Synthetics Monitors (Live)
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'false'
+      env:
+        KIBANA_URL: ${{ secrets.KIBANA_URL }}
+        KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
+        KIBANA_SPACE_ID: ${{ github.event.inputs.space_id || 'default' }}
+        DRY_RUN: 'false'
+      run: |
+        echo "🔥 Running import in LIVE mode..."
+        python .github/scripts/import-synthetics-monitors.py
+    
+    - name: Comment on PR (if applicable)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          // This would be enhanced to capture the actual import results
+          const comment = `## 🔍 Synthetics Monitor Import Preview
+          
+          This PR contains changes to synthetic monitors. The import has been validated in dry-run mode.
+          
+          **Changed Files:**
+          ${context.payload.pull_request.changed_files || 'See PR files tab'}
+          
+          **Next Steps:**
+          - Review the monitor configurations
+          - Merge to trigger automatic import
+          - Or manually trigger import workflow for immediate deployment
+          
+          **Manual Import:**
+          Go to Actions → Import Synthetics Monitors → Run workflow
+          `;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+    
+    - name: Create deployment summary
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'false'
+      run: |
+        echo "## 🚀 Synthetics Monitor Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Deployment Details:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Kibana Space: ${{ github.event.inputs.space_id || 'default' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Triggered by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Monitor Files Processed:**" >> $GITHUB_STEP_SUMMARY
+        find monitors -name "*.json" -type f | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY

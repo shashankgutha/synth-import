@@ -1,0 +1,81 @@
+name: Export Synthetics Monitors
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    # Allow manual trigger
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/scripts/export-synthetics-monitors.py'
+      - '.github/workflows/export-synthetics.yml'
+
+jobs:
+  export-monitors:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r .github/scripts/requirements.txt
+    
+    - name: Export Synthetics Monitors
+      env:
+        KIBANA_URL: ${{ secrets.KIBANA_URL }}
+        KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
+      run: |
+        python .github/scripts/export-synthetics-monitors.py
+    
+    - name: Check for changes
+      id: git-check
+      run: |
+        git add monitors/
+        if git diff --staged --quiet; then
+          echo "changes=false" >> $GITHUB_OUTPUT
+          echo "No changes detected in monitors"
+        else
+          echo "changes=true" >> $GITHUB_OUTPUT
+          echo "Changes detected in monitors"
+        fi
+    
+    - name: Commit and push changes
+      if: steps.git-check.outputs.changes == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add monitors/
+        git commit -m "chore: update synthetics monitors export - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        git push
+    
+    - name: Create Pull Request (optional)
+      if: steps.git-check.outputs.changes == 'true' && github.event_name == 'schedule'
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "chore: update synthetics monitors export"
+        title: "Automated Synthetics Monitors Export"
+        body: |
+          This PR contains the latest export of synthetics monitors from Kibana.
+          
+          **Export Details:**
+          - Export timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          - Triggered by: Scheduled workflow
+          
+          Please review the changes before merging.
+        branch: automated-synthetics-export
+        delete-branch: true

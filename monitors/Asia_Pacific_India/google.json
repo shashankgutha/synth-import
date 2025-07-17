@@ -1,0 +1,63 @@
+{
+  "type": "browser",
+  "enabled": true,
+  "alert": {
+    "status": {
+      "enabled": true
+    },
+    "tls": {
+      "enabled": true
+    }
+  },
+  "schedule": {
+    "unit": "m",
+    "number": "10"
+  },
+  "config_id": "2997fc88-dc6a-451c-88a9-85021eb4d259",
+  "name": "google",
+  "locations": [
+    {
+      "id": "asia-south1-a",
+      "label": "Asia/Pacific - India",
+      "geo": {
+        "lat": 19.07609,
+        "lon": 72.877426
+      },
+      "isServiceManaged": true
+    }
+  ],
+  "namespace": "default",
+  "origin": "ui",
+  "id": "2997fc88-dc6a-451c-88a9-85021eb4d259",
+  "max_attempts": 2,
+  "revision": 1,
+  "__ui": {
+    "is_tls_enabled": true,
+    "script_source": {
+      "is_generated_script": false,
+      "file_name": ""
+    }
+  },
+  "screenshots": "on",
+  "ignore_https_errors": false,
+  "throttling": {
+    "value": {
+      "download": "5",
+      "upload": "3",
+      "latency": "20"
+    },
+    "id": "default",
+    "label": "Default"
+  },
+  "ssl.verification_mode": "full",
+  "ssl.supported_protocols": [
+    "TLSv1.1",
+    "TLSv1.2",
+    "TLSv1.3"
+  ],
+  "created_at": "2025-07-17T14:56:37.286Z",
+  "updated_at": "2025-07-17T14:56:37.286Z",
+  "inline_script": "step('Go to https://www.google.com', async () => {\n  await page.goto('https://www.google.com');\n});",
+  "retest_on_failure": true,
+  "spaceId": "default"
+}
