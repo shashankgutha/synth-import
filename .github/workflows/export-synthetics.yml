@@ -13,6 +13,11 @@ on:
       - '.github/scripts/export-synthetics-monitors.py'
       - '.github/workflows/export-synthetics.yml'
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
 jobs:
   export-monitors:
     runs-on: ubuntu-latest
