@@ -19,6 +19,8 @@ permissions:
 jobs:
   export-monitors:
     runs-on: ubuntu-latest
+    # Only run export after import if the import was in live mode (not dry-run)
+    if: github.event_name != 'workflow_run' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.inputs.dry_run == 'false')
     
     steps:
     - name: Checkout repository
