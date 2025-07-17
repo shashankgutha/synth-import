@@ -85,25 +85,49 @@ class SyntheticsImporter:
         
         return merged_locations
 
-    def find_monitor_files(self):
-        """Find all monitor JSON files in the monitors directory"""
+    def find_monitor_files(self, changed_files_filter=None):
+        """Find monitor JSON files in the monitors directory"""
         monitor_files = []
         
         if not self.monitors_dir.exists():
             print(f"Monitors directory '{self.monitors_dir}' does not exist")
             return monitor_files
         
-        # Find all JSON files in location subdirectories
-        for location_dir in self.monitors_dir.iterdir():
-            if location_dir.is_dir():
-                for json_file in location_dir.glob('*.json'):
-                    monitor_files.append({
-                        'file_path': json_file,
-                        'location_folder': location_dir.name,
-                        'filename': json_file.name
-                    })
+        if changed_files_filter:
+            # Process only specific changed files
+            changed_file_list = changed_files_filter.strip().split('\n')
+            changed_file_list = [f.strip() for f in changed_file_list if f.strip()]
+            
+            print(f"Processing {len(changed_file_list)} changed files:")
+            for changed_file in changed_file_list:
+                print(f"  - {changed_file}")
+                
+                file_path = Path(changed_file)
+                if file_path.exists() and file_path.suffix == '.json':
+                    # Extract location folder from path (monitors/location_folder/file.json)
+                    if len(file_path.parts) >= 3 and file_path.parts[0] == 'monitors':
+                        location_folder = file_path.parts[1]
+                        monitor_files.append({
+                            'file_path': file_path,
+                            'location_folder': location_folder,
+                            'filename': file_path.name
+                        })
+                    else:
+                        print(f"  Warning: Skipping {changed_file} - invalid path structure")
+                else:
+                    print(f"  Warning: Skipping {changed_file} - file not found or not JSON")
+        else:
+            # Find all JSON files in location subdirectories (existing behavior)
+            for location_dir in self.monitors_dir.iterdir():
+                if location_dir.is_dir():
+                    for json_file in location_dir.glob('*.json'):
+                        monitor_files.append({
+                            'file_path': json_file,
+                            'location_folder': location_dir.name,
+                            'filename': json_file.name
+                        })
         
-        print(f"Found {len(monitor_files)} monitor files across locations")
+        print(f"Found {len(monitor_files)} monitor files to process")
         return monitor_files
 
     def load_monitor_config(self, file_path):
@@ -189,11 +213,11 @@ class SyntheticsImporter:
         """Sanitize filename by replacing invalid characters"""
         return re.sub(r'[^a-zA-Z0-9.-]', '_', name)
 
-    def import_monitors(self, dry_run=False):
+    def import_monitors(self, dry_run=False, changed_files_filter=None):
         """Main import function"""
         try:
             # Find monitor files
-            monitor_files = self.find_monitor_files()
+            monitor_files = self.find_monitor_files(changed_files_filter)
             
             if not monitor_files:
                 print("No monitor files found to import")
@@ -380,10 +404,19 @@ class SyntheticsImporter:
 
 def main():
     """Main execution function"""
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Import Synthetics Monitors')
+    parser.add_argument('--changed-files', action='store_true', 
+                       help='Only process changed files from CHANGED_FILES environment variable')
+    args = parser.parse_args()
+    
     kibana_url = os.getenv('KIBANA_URL')
     api_key = os.getenv('KIBANA_API_KEY')
     space_id = os.getenv('KIBANA_SPACE_ID', 'default')
     dry_run = os.getenv('DRY_RUN', 'false').lower() in ['true', '1', 'yes']
+    changed_files = os.getenv('CHANGED_FILES', '').strip() if args.changed_files else None
     
     if not all([kibana_url, api_key]):
         print("Missing required environment variables:")
@@ -396,13 +429,17 @@ def main():
     
     print(f"Kibana Synthetics Monitor Import")
     print(f"{'DRY RUN MODE' if dry_run else 'LIVE MODE'}")
+    if args.changed_files:
+        print("CHANGED FILES MODE - Processing only modified monitors")
     print("=" * 50)
     print(f"Kibana URL: {kibana_url}")
     print(f"Space ID: {space_id}")
+    if changed_files:
+        print(f"Changed files: {changed_files}")
     print()
     
     importer = SyntheticsImporter(kibana_url, api_key, space_id)
-    importer.import_monitors(dry_run=dry_run)
+    importer.import_monitors(dry_run=dry_run, changed_files_filter=changed_files)
 
 if __name__ == "__main__":
     main()

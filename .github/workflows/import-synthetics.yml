@@ -16,6 +16,11 @@ on:
         required: false
         default: 'default'
         type: string
+  push:
+    branches:
+      - main
+    paths:
+      - 'monitors/**/*.json'
 
 jobs:
   import-monitors:
@@ -70,6 +75,37 @@ jobs:
       run: |
         echo "Running import in LIVE mode..."
         python .github/scripts/import-synthetics-monitors.py
+    
+    - name: Get changed monitor files
+      if: github.event_name == 'push'
+      id: changed-files
+      run: |
+        echo "Detecting changed monitor files..."
+        # Get changed files from the push event
+        changed_files=$(git diff --name-only ${{ github.event.before }}..${{ github.event.after }} | grep "monitors/.*\.json$" || true)
+        
+        if [ -z "$changed_files" ]; then
+          echo "No monitor files changed"
+          echo "changed_files=" >> $GITHUB_OUTPUT
+        else
+          echo "Changed monitor files:"
+          echo "$changed_files"
+          # Convert to space-separated list for the script
+          echo "changed_files=$changed_files" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Import Changed Monitors (Auto)
+      if: github.event_name == 'push' && steps.changed-files.outputs.changed_files != ''
+      env:
+        KIBANA_URL: ${{ secrets.KIBANA_URL }}
+        KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
+        KIBANA_SPACE_ID: 'default'
+        DRY_RUN: 'false'
+        CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+      run: |
+        echo "Running import for changed monitors only..."
+        echo "Changed files: $CHANGED_FILES"
+        python .github/scripts/import-synthetics-monitors.py --changed-files
     
 
     
