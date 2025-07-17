@@ -39,15 +39,15 @@ jobs:
     
     - name: Validate monitor files
       run: |
-        echo "🔍 Validating monitor JSON files..."
+        echo "Validating monitor JSON files..."
         find monitors -name "*.json" -type f | while read file; do
           echo "Validating: $file"
           python -m json.tool "$file" > /dev/null || {
-            echo "❌ Invalid JSON in $file"
+            echo "Invalid JSON in $file"
             exit 1
           }
         done
-        echo "✅ All JSON files are valid"
+        echo "All JSON files are valid"
     
     - name: Import Synthetics Monitors (Dry Run)
       if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
@@ -80,7 +80,7 @@ jobs:
     - name: Create deployment summary
       if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'false'
       run: |
-        echo "## 🚀 Synthetics Monitor Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "## Synthetics Monitor Deployment Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Deployment Details:**" >> $GITHUB_STEP_SUMMARY
         echo "- Kibana Space: ${{ github.event.inputs.space_id || 'default' }}" >> $GITHUB_STEP_SUMMARY

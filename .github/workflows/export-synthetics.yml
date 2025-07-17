@@ -1,9 +1,9 @@
 name: Export Synthetics Monitors
 
 on:
-  schedule:
+  #schedule:
     # Run daily at 2 AM UTC
-    - cron: '0 2 * * *'
+    #- cron: '0 2 * * *'
   workflow_dispatch:
     # Allow manual trigger
   workflow_run:
@@ -62,7 +62,7 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add monitors/
-        git commit -m "chore: update synthetics monitors export - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        git commit -m "update synthetics monitors export - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         git push
     
     - name: Create Pull Request (optional)
@@ -70,7 +70,7 @@ jobs:
       uses: peter-evans/create-pull-request@v5
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: "chore: update synthetics monitors export"
+        commit-message: "update synthetics monitors export"
         title: "Automated Synthetics Monitors Export"
         body: |
           This PR contains the latest export of synthetics monitors from Kibana.
