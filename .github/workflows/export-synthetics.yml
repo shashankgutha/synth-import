@@ -6,12 +6,10 @@ on:
     - cron: '0 2 * * *'
   workflow_dispatch:
     # Allow manual trigger
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/scripts/export-synthetics-monitors.py'
-      - '.github/workflows/export-synthetics.yml'
+  workflow_run:
+    workflows: ["Import Synthetics Monitors"]
+    types:
+      - completed
 
 permissions:
   contents: write

@@ -16,13 +16,6 @@ on:
         required: false
         default: 'default'
         type: string
-  push:
-    branches:
-      - main
-    paths:
-      - 'monitors/**/*.json'
-      - '.github/scripts/import-synthetics-monitors.py'
-      - '.github/workflows/import-synthetics.yml'
 
 jobs:
   import-monitors:
@@ -57,14 +50,14 @@ jobs:
         echo "✅ All JSON files are valid"
     
     - name: Import Synthetics Monitors (Dry Run)
-      if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true')
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
       env:
         KIBANA_URL: ${{ secrets.KIBANA_URL }}
         KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
         KIBANA_SPACE_ID: ${{ github.event.inputs.space_id || 'default' }}
         DRY_RUN: 'true'
       run: |
-        echo "🧪 Running import in DRY RUN mode..."
+        echo "Running import in DRY RUN mode..."
         python .github/scripts/import-synthetics-monitors.py
     
     - name: Import Synthetics Monitors (Live)
@@ -75,39 +68,14 @@ jobs:
         KIBANA_SPACE_ID: ${{ github.event.inputs.space_id || 'default' }}
         DRY_RUN: 'false'
       run: |
-        echo "🔥 Running import in LIVE mode..."
+        echo "Running import in LIVE mode..."
         python .github/scripts/import-synthetics-monitors.py
     
-    - name: Comment on PR (if applicable)
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs');
-          
-          // This would be enhanced to capture the actual import results
-          const comment = `## 🔍 Synthetics Monitor Import Preview
-          
-          This PR contains changes to synthetic monitors. The import has been validated in dry-run mode.
-          
-          **Changed Files:**
-          ${context.payload.pull_request.changed_files || 'See PR files tab'}
-          
-          **Next Steps:**
-          - Review the monitor configurations
-          - Merge to trigger automatic import
-          - Or manually trigger import workflow for immediate deployment
-          
-          **Manual Import:**
-          Go to Actions → Import Synthetics Monitors → Run workflow
-          `;
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+
+    
+
+    
+
     
     - name: Create deployment summary
       if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'false'

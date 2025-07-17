@@ -51,23 +51,23 @@ class SyntheticsImporter:
     def get_existing_monitor(self, config_id):
         """Get existing monitor configuration if it exists"""
         try:
-            print(f"🔍 Checking if monitor exists: {config_id}")
+            print(f"Checking if monitor exists: {config_id}")
             response = self.make_request('GET', f"/api/synthetics/monitors/{config_id}")
             
             if response and response.get('config_id') == config_id:
-                print(f"✅ Monitor exists: {response.get('name', 'Unknown')} ({config_id})")
+                print(f"Monitor exists: {response.get('name', 'Unknown')} ({config_id})")
                 return response
             else:
-                print(f"❌ Monitor not found: {config_id}")
+                print(f"Monitor not found: {config_id}")
                 return None
                 
         except Exception as e:
             # If we get a 404 or similar error, the monitor doesn't exist
             if "404" in str(e) or "Not Found" in str(e):
-                print(f"❌ Monitor not found: {config_id}")
+                print(f"Monitor not found: {config_id}")
                 return None
             else:
-                print(f"⚠️  Error checking monitor {config_id}: {str(e)}")
+                print(f"Error checking monitor {config_id}: {str(e)}")
                 return None
 
     def merge_locations(self, existing_locations, new_locations):
@@ -79,9 +79,9 @@ class SyntheticsImporter:
             # Check if this location already exists
             if not any(loc.get('id') == new_location_id for loc in merged_locations):
                 merged_locations.append(new_location)
-                print(f"➕ Adding new location: {new_location.get('label', new_location_id)}")
+                print(f"Adding new location: {new_location.get('label', new_location_id)}")
             else:
-                print(f"🔄 Location already exists: {new_location.get('label', new_location_id)}")
+                print(f"Location already exists: {new_location.get('label', new_location_id)}")
         
         return merged_locations
 
@@ -90,7 +90,7 @@ class SyntheticsImporter:
         monitor_files = []
         
         if not self.monitors_dir.exists():
-            print(f"❌ Monitors directory '{self.monitors_dir}' does not exist")
+            print(f"Monitors directory '{self.monitors_dir}' does not exist")
             return monitor_files
         
         # Find all JSON files in location subdirectories
@@ -103,7 +103,7 @@ class SyntheticsImporter:
                         'filename': json_file.name
                     })
         
-        print(f"📁 Found {len(monitor_files)} monitor files across locations")
+        print(f"Found {len(monitor_files)} monitor files across locations")
         return monitor_files
 
     def load_monitor_config(self, file_path):
@@ -133,7 +133,7 @@ class SyntheticsImporter:
         for field in create_fields_to_remove:
             create_config.pop(field, None)
         
-        print(f"🔧 Removed fields for creation: {[f for f in create_fields_to_remove if f in config]}")
+        print(f"Removed fields for creation: {[f for f in create_fields_to_remove if f in config]}")
         return create_config
     
     def prepare_monitor_for_update(self, config):
@@ -158,13 +158,13 @@ class SyntheticsImporter:
         # Prepare config for creation
         create_config = self.prepare_monitor_for_create(config)
         
-        print(f"📝 Creating monitor: {config.get('name', 'Unknown')}")
+        print(f"Creating monitor: {config.get('name', 'Unknown')}")
         
         try:
             response = self.make_request('POST', endpoint, create_config)
             return response
         except Exception as e:
-            print(f"❌ Failed to create monitor: {str(e)}")
+            print(f"Failed to create monitor: {str(e)}")
             return None
 
     def update_monitor(self, config_id, config):
@@ -174,53 +174,16 @@ class SyntheticsImporter:
         # Prepare config for update
         update_config = self.prepare_monitor_for_update(config)
         
-        print(f"🔄 Updating monitor: {config.get('name', 'Unknown')} (ID: {config_id})")
+        print(f"Updating monitor: {config.get('name', 'Unknown')} (ID: {config_id})")
         
         try:
             response = self.make_request('PUT', endpoint, update_config)
             return response
         except Exception as e:
-            print(f"❌ Failed to update monitor: {str(e)}")
+            print(f"Failed to update monitor: {str(e)}")
             return None
 
-    def update_json_files_with_new_config(self, file_infos, new_monitor_config):
-        """Update JSON files with the new monitor configuration from Kibana"""
-        try:
-            for file_info in file_infos:
-                file_path = file_info['file_path']
-                location_folder = file_info['location_folder']
-                
-                print(f"📝 Updating {file_path.name} in {location_folder}")
-                
-                # Create location-specific config (only include the location for this folder)
-                location_specific_config = new_monitor_config.copy()
-                
-                # Find the location that matches this folder
-                all_locations = new_monitor_config.get('locations', [])
-                folder_location = None
-                
-                for location in all_locations:
-                    location_label = location.get('label', 'unknown-location')
-                    sanitized_label = self.sanitize_filename(location_label.replace('/', '_').replace(' - ', '_'))
-                    
-                    if sanitized_label == location_folder:
-                        folder_location = location
-                        break
-                
-                if folder_location:
-                    # Update config to only include this location
-                    location_specific_config['locations'] = [folder_location]
-                    
-                    # Write updated config back to file
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        json.dump(location_specific_config, f, indent=2, ensure_ascii=False)
-                    
-                    print(f"✅ Updated {file_path.name} with new config_id: {new_monitor_config.get('config_id')}")
-                else:
-                    print(f"⚠️  Could not find matching location for folder: {location_folder}")
-                    
-        except Exception as e:
-            print(f"❌ Error updating JSON files: {str(e)}")
+
 
     def sanitize_filename(self, name):
         """Sanitize filename by replacing invalid characters"""
@@ -233,7 +196,7 @@ class SyntheticsImporter:
             monitor_files = self.find_monitor_files()
             
             if not monitor_files:
-                print("⚠️  No monitor files found to import")
+                print("No monitor files found to import")
                 return
             
             # Track import results
@@ -255,7 +218,7 @@ class SyntheticsImporter:
                     monitor_name = config.get('name', 'Unknown')
                     
                     if not config_id:
-                        print(f"⚠️  Skipping {file_info['filename']} - no config_id found")
+                        print(f"Skipping {file_info['filename']} - no config_id found")
                         results['skipped'].append({
                             'file': str(file_info['file_path']),
                             'reason': 'No config_id'
@@ -276,17 +239,17 @@ class SyntheticsImporter:
                         
                         existing_config['locations'] = merged_locations
                         processed_configs[config_id]['files'].append(file_info)
-                        print(f"🔗 Merged locations for {monitor_name}: {len(merged_locations)} total locations")
+                        print(f"Merged locations for {monitor_name}: {len(merged_locations)} total locations")
                     else:
                         # First time seeing this monitor
                         processed_configs[config_id] = {
                             'config': config,
                             'files': [file_info]
                         }
-                        print(f"📋 Processing {monitor_name} with {len(config.get('locations', []))} locations")
+                        print(f"Processing {monitor_name} with {len(config.get('locations', []))} locations")
                 
                 except Exception as e:
-                    print(f"❌ Error loading {file_info['filename']}: {str(e)}")
+                    print(f"Error loading {file_info['filename']}: {str(e)}")
                     results['failed'].append({
                         'file': str(file_info['file_path']),
                         'error': str(e)
@@ -299,8 +262,8 @@ class SyntheticsImporter:
                     monitor_name = config.get('name', 'Unknown')
                     new_locations = config.get('locations', [])
                     
-                    print(f"\n🎯 Processing monitor: {monitor_name} ({config_id})")
-                    print(f"📍 New locations to deploy: {len(new_locations)}")
+                    print(f"\nProcessing monitor: {monitor_name} ({config_id})")
+                    print(f"New locations to deploy: {len(new_locations)}")
                     
                     # Get existing monitor configuration
                     existing_monitor = self.get_existing_monitor(config_id)
@@ -309,19 +272,19 @@ class SyntheticsImporter:
                         if existing_monitor:
                             existing_locations = existing_monitor.get('locations', [])
                             merged_locations = self.merge_locations(existing_locations, new_locations)
-                            print(f"🔄 [DRY RUN] Would update: {monitor_name} with {len(merged_locations)} total locations")
+                            print(f"[DRY RUN] Would update: {monitor_name} with {len(merged_locations)} total locations")
                             results['updated'].append({'name': monitor_name, 'config_id': config_id})
                         else:
-                            print(f"📝 [DRY RUN] Would create: {monitor_name} with {len(new_locations)} locations")
+                            print(f"[DRY RUN] Would create: {monitor_name} with {len(new_locations)} locations")
                             results['created'].append({'name': monitor_name, 'config_id': config_id})
                         continue
                     
                     # Perform actual create/update/restore workflow
                     if existing_monitor:
                         # Monitor exists - merge locations and update
-                        print(f"✅ Monitor exists, merging locations...")
+                        print(f"Monitor exists, merging locations...")
                         existing_locations = existing_monitor.get('locations', [])
-                        print(f"📍 Existing locations: {len(existing_locations)}")
+                        print(f"Existing locations: {len(existing_locations)}")
                         
                         # Merge existing and new locations
                         merged_locations = self.merge_locations(existing_locations, new_locations)
@@ -330,7 +293,7 @@ class SyntheticsImporter:
                         config_to_update = config.copy()
                         config_to_update['locations'] = merged_locations
                         
-                        print(f"🔄 Updating monitor with {len(merged_locations)} total locations")
+                        print(f"Updating monitor with {len(merged_locations)} total locations")
                         response = self.update_monitor(config_id, config_to_update)
                         
                         if response is not None:
@@ -340,7 +303,7 @@ class SyntheticsImporter:
                                 'total_locations': len(merged_locations),
                                 'operation': 'location_merge_update'
                             })
-                            print(f"✅ Successfully updated monitor with merged locations")
+                            print(f"Successfully updated monitor with merged locations")
                         else:
                             results['failed'].append({
                                 'name': monitor_name,
@@ -348,50 +311,24 @@ class SyntheticsImporter:
                                 'operation': 'update_after_merge'
                             })
                     else:
-                        # Monitor doesn't exist - create then update workflow
-                        print(f"❌ Monitor doesn't exist, starting create-then-update workflow...")
+                        # Monitor doesn't exist - create workflow
+                        print(f"Monitor doesn't exist, creating new monitor...")
                         
-                        # Step 1: Create the monitor
-                        print(f"📝 Step 1: Creating monitor...")
+                        # Create the monitor
+                        print(f"Creating monitor...")
                         create_response = self.create_monitor(config)
                         
                         if create_response is not None:
                             created_config_id = create_response.get('id') or create_response.get('config_id')
-                            print(f"✅ Monitor created successfully with ID: {created_config_id}")
+                            print(f"Monitor created successfully with ID: {created_config_id}")
                             
-                            # Step 2: Get the created monitor to ensure we have the complete config
-                            print(f"🔍 Step 2: Fetching created monitor...")
-                            created_monitor = self.get_existing_monitor(created_config_id or config_id)
-                            
-                            if created_monitor:
-                                # Step 3: Update the created monitor with the complete configuration
-                                print(f"🔄 Step 3: Updating created monitor with complete config...")
-                                update_response = self.update_monitor(created_config_id or config_id, config)
-                                
-                                if update_response is not None:
-                                    # Step 4: Update JSON files with the new monitor configuration
-                                    print(f"📝 Step 4: Updating JSON files with new monitor config...")
-                                    self.update_json_files_with_new_config(monitor_data['files'], created_monitor)
-                                    
-                                    results['created'].append({
-                                        'name': monitor_name,
-                                        'config_id': created_config_id or config_id,
-                                        'total_locations': len(new_locations),
-                                        'operation': 'create_then_update'
-                                    })
-                                    print(f"✅ Successfully created, updated, and saved monitor")
-                                else:
-                                    results['failed'].append({
-                                        'name': monitor_name,
-                                        'config_id': config_id,
-                                        'operation': 'update_after_create'
-                                    })
-                            else:
-                                results['failed'].append({
-                                    'name': monitor_name,
-                                    'config_id': config_id,
-                                    'operation': 'fetch_after_create'
-                                })
+                            results['created'].append({
+                                'name': monitor_name,
+                                'config_id': created_config_id or config_id,
+                                'total_locations': len(new_locations),
+                                'operation': 'create'
+                            })
+                            print(f"Successfully created monitor")
                         else:
                             results['failed'].append({
                                 'name': monitor_name,
@@ -400,7 +337,7 @@ class SyntheticsImporter:
                             })
                 
                 except Exception as e:
-                    print(f"❌ Error processing monitor {monitor_name}: {str(e)}")
+                    print(f"Error processing monitor {monitor_name}: {str(e)}")
                     results['failed'].append({
                         'name': monitor_name,
                         'config_id': config_id,
@@ -408,30 +345,30 @@ class SyntheticsImporter:
                     })
             
             # Print summary
-            print(f"\n{'🧪 DRY RUN ' if dry_run else ''}Import Summary:")
+            print(f"\n{'DRY RUN ' if dry_run else ''}Import Summary:")
             print(f"{'=' * 50}")
-            print(f"📝 Created: {len(results['created'])}")
-            print(f"🔄 Updated: {len(results['updated'])}")
-            print(f"❌ Failed: {len(results['failed'])}")
-            print(f"⚠️  Skipped: {len(results['skipped'])}")
+            print(f"Created: {len(results['created'])}")
+            print(f"Updated: {len(results['updated'])}")
+            print(f"Failed: {len(results['failed'])}")
+            print(f"Skipped: {len(results['skipped'])}")
             
             if results['created']:
-                print(f"\n📝 Created monitors:")
+                print(f"\nCreated monitors:")
                 for item in results['created']:
                     print(f"   - {item['name']} ({item.get('config_id', 'N/A')})")
             
             if results['updated']:
-                print(f"\n🔄 Updated monitors:")
+                print(f"\nUpdated monitors:")
                 for item in results['updated']:
                     print(f"   - {item['name']} ({item['config_id']})")
             
             if results['failed']:
-                print(f"\n❌ Failed operations:")
+                print(f"\nFailed operations:")
                 for item in results['failed']:
                     print(f"   - {item.get('name', 'Unknown')} - {item.get('error', item.get('operation', 'Unknown error'))}")
             
             if results['skipped']:
-                print(f"\n⚠️  Skipped files:")
+                print(f"\nSkipped files:")
                 for item in results['skipped']:
                     print(f"   - {Path(item['file']).name} - {item['reason']}")
             
@@ -457,11 +394,11 @@ def main():
         print("- DRY_RUN: Set to 'true' for dry run mode")
         sys.exit(1)
     
-    print(f"🚀 Kibana Synthetics Monitor Import")
-    print(f"{'🧪 DRY RUN MODE' if dry_run else '🔥 LIVE MODE'}")
+    print(f"Kibana Synthetics Monitor Import")
+    print(f"{'DRY RUN MODE' if dry_run else 'LIVE MODE'}")
     print("=" * 50)
-    print(f"🌐 Kibana URL: {kibana_url}")
-    print(f"🏠 Space ID: {space_id}")
+    print(f"Kibana URL: {kibana_url}")
+    print(f"Space ID: {space_id}")
     print()
     
     importer = SyntheticsImporter(kibana_url, api_key, space_id)
