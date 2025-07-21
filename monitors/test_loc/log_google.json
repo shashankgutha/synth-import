@@ -13,7 +13,7 @@
     "unit": "m",
     "number": "10"
   },
-  "config_id": "random",
+  "config_id": "1f01f76a-b118-4328-8e82-4997a347ad35",
   "name": "log_google",
   "locations": [
     {
@@ -29,8 +29,9 @@
   ],
   "namespace": "default",
   "origin": "ui",
+  "id": "1f01f76a-b118-4328-8e82-4997a347ad35",
   "max_attempts": 2,
-  "revision": 9,
+  "revision": 1,
   "__ui": {
     "is_tls_enabled": true,
     "script_source": {
@@ -55,8 +56,9 @@
     "TLSv1.2",
     "TLSv1.3"
   ],
+  "created_at": "2025-07-21T15:58:16.404Z",
+  "updated_at": "2025-07-21T15:58:16.404Z",
   "inline_script": "step('Go to https://www.google.com', async () => {\n  await page.goto('https://www.google.com');\n});",
   "retest_on_failure": true,
-  "url": "https://www.google.com",
   "spaceId": "default"
 }
