@@ -94,6 +94,7 @@ jobs:
         FRESH_IMPORT: 'true'
       run: |
         echo "Running import in FRESH IMPORT mode..."
+        echo "::notice title=Fresh Import Mode::Export workflow will NOT be triggered to preserve original Git files"
         python .github/scripts/import-synthetics-monitors.py --fresh-import
     
     - name: Get changed monitor files
@@ -136,23 +137,32 @@ jobs:
     - name: Set import mode indicator
       run: |
         # Create a file to indicate the import mode for the export workflow
-        # Only set LIVE_IMPORT=true for actual live operations (not dry-runs)
-        if [ "${{ github.event_name }}" = "push" ] || ([ "${{ github.event.inputs.dry_run }}" = "false" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]); then
+        # Set LIVE_IMPORT=true for operations that should trigger export
+        # Fresh import should NOT trigger export to preserve original Git files
+        if [ "${{ github.event_name }}" = "push" ] || ([ "${{ github.event.inputs.dry_run }}" = "false" ] && [ "${{ github.event.inputs.fresh_import }}" != "true" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]); then
           echo "LIVE_IMPORT=true" >> $GITHUB_ENV
-          if [ "${{ github.event.inputs.fresh_import }}" = "true" ]; then
-            echo "fresh-import" > /tmp/import_mode.txt
-          else
-            echo "live" > /tmp/import_mode.txt
-          fi
+          echo "TRIGGER_EXPORT=true" >> $GITHUB_ENV
+          echo "live" > /tmp/import_mode.txt
         else
           echo "LIVE_IMPORT=false" >> $GITHUB_ENV
+          echo "TRIGGER_EXPORT=false" >> $GITHUB_ENV
           if [ "${{ github.event.inputs.fresh_import }}" = "true" ]; then
-            echo "fresh-import-dry-run" > /tmp/import_mode.txt
+            if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+              echo "fresh-import-dry-run" > /tmp/import_mode.txt
+            else
+              echo "fresh-import" > /tmp/import_mode.txt
+            fi
           else
             echo "dry-run" > /tmp/import_mode.txt
           fi
         fi
         echo "Import mode: $(cat /tmp/import_mode.txt)"
+        echo "Trigger export: $TRIGGER_EXPORT"
+        
+        # Create a summary that export workflow can potentially detect
+        if [ "${{ github.event.inputs.fresh_import }}" = "true" ]; then
+          echo "::notice title=Fresh Import Mode::This is a fresh import - export will be skipped"
+        fi
     
     - name: Create deployment summary
       if: env.LIVE_IMPORT == 'true'

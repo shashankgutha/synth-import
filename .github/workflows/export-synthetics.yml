@@ -19,19 +19,13 @@ permissions:
 jobs:
   export-monitors:
     runs-on: ubuntu-latest
-    # Run export in these cases:
-    # 1. Manual trigger or scheduled run
-    # 2. After successful import from push (always live)
-    # 3. After successful manual import (we'll assume it was live since dry-runs shouldn't need export)
-    if: |
-      github.event_name != 'workflow_run' || (
-        github.event_name == 'workflow_run' && 
-        github.event.workflow_run.conclusion == 'success'
-      )
+    # Run export after successful import workflows
+    if: github.event_name != 'workflow_run' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     
     steps:
-    - name: Debug workflow run event
+    - name: Check if export should proceed
       if: github.event_name == 'workflow_run'
+      id: should-export
       run: |
         echo "Workflow run event details:"
         echo "Event name: ${{ github.event_name }}"
@@ -39,25 +33,38 @@ jobs:
         echo "Workflow run event: ${{ github.event.workflow_run.event }}"
         echo "Workflow run name: ${{ github.event.workflow_run.name }}"
         echo "Workflow run status: ${{ github.event.workflow_run.status }}"
-        echo "Triggering workflow: ${{ github.event.workflow_run.workflow_id }}"
+        echo "Head commit message: ${{ github.event.workflow_run.head_commit.message }}"
+        
+        # Check if this was a fresh import by looking for indicators
+        if echo "${{ github.event.workflow_run.head_commit.message }}" | grep -i "fresh.import" > /dev/null; then
+          echo "Fresh import detected - skipping export to preserve original Git files"
+          echo "should_export=false" >> $GITHUB_OUTPUT
+        else
+          echo "Normal import detected - proceeding with export"
+          echo "should_export=true" >> $GITHUB_OUTPUT
+        fi
     
     - name: Checkout repository
+      if: github.event_name != 'workflow_run' || steps.should-export.outputs.should_export == 'true'
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
     
     - name: Setup Python
+      if: github.event_name != 'workflow_run' || steps.should-export.outputs.should_export == 'true'
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
     
     - name: Install Python dependencies
+      if: github.event_name != 'workflow_run' || steps.should-export.outputs.should_export == 'true'
       run: |
         python -m pip install --upgrade pip
         pip install -r .github/scripts/requirements.txt
     
     - name: Export Synthetics Monitors
+      if: github.event_name != 'workflow_run' || steps.should-export.outputs.should_export == 'true'
       env:
         KIBANA_URL: ${{ secrets.KIBANA_URL }}
         KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
@@ -65,6 +72,7 @@ jobs:
         python .github/scripts/export-synthetics-monitors.py
     
     - name: Check for changes
+      if: github.event_name != 'workflow_run' || steps.should-export.outputs.should_export == 'true'
       id: git-check
       run: |
         git add monitors/
@@ -77,7 +85,7 @@ jobs:
         fi
     
     - name: Commit and push changes
-      if: steps.git-check.outputs.changes == 'true'
+      if: (github.event_name != 'workflow_run' || steps.should-export.outputs.should_export == 'true') && steps.git-check.outputs.changes == 'true'
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
@@ -86,7 +94,7 @@ jobs:
         git push
     
     - name: Create Pull Request (optional)
-      if: steps.git-check.outputs.changes == 'true' && github.event_name == 'schedule'
+      if: (github.event_name != 'workflow_run' || steps.should-export.outputs.should_export == 'true') && steps.git-check.outputs.changes == 'true' && github.event_name == 'schedule'
       uses: peter-evans/create-pull-request@v5
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
