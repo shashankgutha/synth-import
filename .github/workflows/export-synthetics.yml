@@ -93,20 +93,11 @@ jobs:
         git commit -m "update synthetics monitors export - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         git push
     
-    - name: Create Pull Request (optional)
+    - name: Push to export branch (scheduled runs)
       if: (github.event_name != 'workflow_run' || steps.should-export.outputs.should_export == 'true') && steps.git-check.outputs.changes == 'true' && github.event_name == 'schedule'
-      uses: peter-evans/create-pull-request@v5
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: "update synthetics monitors export"
-        title: "Automated Synthetics Monitors Export"
-        body: |
-          This PR contains the latest export of synthetics monitors from Kibana.
-          
-          **Export Details:**
-          - Export timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-          - Triggered by: Scheduled workflow
-          
-          Please review the changes before merging.
-        branch: automated-synthetics-export
-        delete-branch: true
+      run: |
+        # Create and push to a dedicated export branch for scheduled runs
+        BRANCH_NAME="automated-synthetics-export-$(date -u '+%Y%m%d-%H%M%S')"
+        git checkout -b "$BRANCH_NAME"
+        git push origin "$BRANCH_NAME"
+        echo "Pushed changes to branch: $BRANCH_NAME"

@@ -1,0 +1,57 @@
+name: Update Elastic Agent Config
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'monitors/**/*.json'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-elastic-agent:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+        ref: ${{ github.head_ref }}
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
+    
+    - name: Update Elastic Agent Configurations
+      env:
+        KIBANA_URL: ${{ secrets.KIBANA_URL }}
+        KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_NUMBER: ${{ github.event.number }}
+        REPO_OWNER: ${{ github.repository_owner }}
+        REPO_NAME: ${{ github.event.repository.name }}
+      run: |
+        python .github/scripts/update-elastic-agent.py
+    
+    - name: Check for changes and commit
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        if git diff --quiet; then
+          echo "No changes to commit"
+        else
+          git add monitors/*/elastic-agent.yml
+          git commit -m "Update elastic-agent.yml configurations - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          git push
+        fi
