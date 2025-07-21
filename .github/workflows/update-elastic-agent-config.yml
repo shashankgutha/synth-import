@@ -112,9 +112,22 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+        
+        # Create a new branch for the elastic agent config updates
+        BRANCH_NAME="update-elastic-agent-config-$(date -u '+%Y%m%d-%H%M%S')"
+        echo "Creating branch: $BRANCH_NAME"
+        git checkout -b "$BRANCH_NAME"
+        
+        # Add and commit changes
         git add monitors/*/elastic-agent.yml
-        git commit -m "Update elastic-agent.yml configurations - $(date -u '+%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
-        git push
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Update elastic-agent.yml configurations - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          git push origin "$BRANCH_NAME"
+          echo "Pushed changes to branch: $BRANCH_NAME"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
+        fi
     
     - name: Create deployment summary
       if: always() && steps.should-update.outputs.should_update == 'true'
@@ -132,6 +145,10 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Changed folders**: ${{ steps.changed-folders.outputs.changed_folders }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ env.branch_name }}" ]; then
+            echo "**Branch created**: \`${{ env.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "**Updated Files**:" >> $GITHUB_STEP_SUMMARY
           for folder in ${{ steps.changed-folders.outputs.changed_folders }}; do
             echo "- \`monitors/$folder/elastic-agent.yml\`" >> $GITHUB_STEP_SUMMARY
@@ -141,6 +158,15 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.update-script.outputs.script_output }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 Next Steps" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ env.branch_name }}" ]; then
+            echo "1. Review the changes in branch \`${{ env.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "2. Create a pull request to merge the updated configurations" >> $GITHUB_STEP_SUMMARY
+            echo "3. Merge the PR to apply the elastic-agent.yml updates" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No changes were made to elastic-agent.yml files" >> $GITHUB_STEP_SUMMARY
+          fi
         elif [ "${{ steps.update-script.outcome }}" = "failure" ]; then
           echo "### ❌ Update Results - Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
