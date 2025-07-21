@@ -13,6 +13,7 @@
     "unit": "m",
     "number": "10"
   },
+  "config_id": "random",
   "name": "log_google",
   "locations": [
     {
