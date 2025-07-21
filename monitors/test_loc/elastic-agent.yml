@@ -1,5 +1,5 @@
 id: fleet-first-agent-policy
-revision: 24
+revision: 27
 outputs:
   default:
     type: elasticsearch
@@ -144,7 +144,7 @@ inputs:
   - id: >-
       synthetics/browser-synthetics-083cca9c-2d6e-4176-85ae-f4fa1276dc73-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
     name: google-test loc-default
-    revision: 5
+    revision: 8
     type: synthetics/browser
     use_output: default
     meta:
@@ -159,7 +159,7 @@ inputs:
       - id: 083cca9c-2d6e-4176-85ae-f4fa1276dc73
         name: google
         type: browser
-        enabled: true
+        enabled: false
         data_stream:
           dataset: browser
           type: synthetics
@@ -224,8 +224,8 @@ inputs:
                 monitor.fleet_managed: true
 signed:
   data: >-
-    eyJpZCI6ImZsZWV0LWZpcnN0LWFnZW50LXBvbGljeSIsImFnZW50Ijp7ImZlYXR1cmVzIjp7fSwicHJvdGVjdGlvbiI6eyJlbmFibGVkIjpmYWxzZSwidW5pbnN0YWxsX3Rva2VuX2hhc2giOiJvbnlObzcra01IM2dXbFdYcDlreXIyTGwwT0RJc2pMZXlzdTIwYjJHejNFPSIsInNpZ25pbmdfa2V5IjoiTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFYVFJZ2NlOFdsQUtxSjZ4d1dWZGorbFRJdzh4dlR3eUNPRkFEZWNwSUh5OWJ5UkpmR3Via09odTB2eWdEQkJzUXBFNFNEbWdaOExrUm95VDhyMWFtclE9PSJ9fSwiaW5wdXRzIjpbeyJpZCI6InN5bnRoZXRpY3MvYnJvd3Nlci1zeW50aGV0aWNzLTA4M2NjYTljLTJkNmUtNDE3Ni04NWFlLWY0ZmExMjc2ZGM3My03Zjc0ZDhmMy1hZmQwLTQxMWItYjZlZC05NmU0MWE2MWViNzEtZGVmYXVsdCIsIm5hbWUiOiJnb29nbGUtdGVzdCBsb2MtZGVmYXVsdCIsInJldmlzaW9uIjo1LCJ0eXBlIjoic3ludGhldGljcy9icm93c2VyIn1dfQ==
+    eyJpZCI6ImZsZWV0LWZpcnN0LWFnZW50LXBvbGljeSIsImFnZW50Ijp7ImZlYXR1cmVzIjp7fSwicHJvdGVjdGlvbiI6eyJlbmFibGVkIjpmYWxzZSwidW5pbnN0YWxsX3Rva2VuX2hhc2giOiJvbnlObzcra01IM2dXbFdYcDlreXIyTGwwT0RJc2pMZXlzdTIwYjJHejNFPSIsInNpZ25pbmdfa2V5IjoiTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFYVFJZ2NlOFdsQUtxSjZ4d1dWZGorbFRJdzh4dlR3eUNPRkFEZWNwSUh5OWJ5UkpmR3Via09odTB2eWdEQkJzUXBFNFNEbWdaOExrUm95VDhyMWFtclE9PSJ9fSwiaW5wdXRzIjpbeyJpZCI6InN5bnRoZXRpY3MvYnJvd3Nlci1zeW50aGV0aWNzLTA4M2NjYTljLTJkNmUtNDE3Ni04NWFlLWY0ZmExMjc2ZGM3My03Zjc0ZDhmMy1hZmQwLTQxMWItYjZlZC05NmU0MWE2MWViNzEtZGVmYXVsdCIsIm5hbWUiOiJnb29nbGUtdGVzdCBsb2MtZGVmYXVsdCIsInJldmlzaW9uIjo4LCJ0eXBlIjoic3ludGhldGljcy9icm93c2VyIn1dfQ==
   signature: >-
-    MEUCIDlyQ5HX0WtMD+Wk0jhzW4C730GwKMMW4FegLBnsAw5wAiEAvw9A7jrm81WDRQi2jk22pn2QroahhlDfftcP4kd+IUc=
+    MEYCIQCJfGFYQAkxfbMVX00oeBc6z2LZiHU5YfzZghGI3JJvawIhAIAMP2l8wH2BMFwV0KpftIBfAPePa3yzHpnR9+Y3pxUX
 secret_references: []
 namespaces: []
