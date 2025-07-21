@@ -32,26 +32,111 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests
     
+    - name: Get changed monitor folders
+      id: changed-folders
+      run: |
+        echo "Getting changed monitor JSON files..."
+        # Since workflow is triggered only by monitors/**/*.json changes, get those files directly
+        changed_files=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | grep -E '^monitors/.*\.json$')
+        echo "Changed JSON files: $changed_files"
+        
+        # Extract unique folder names
+        changed_folders=""
+        for file in $changed_files; do
+          folder=$(echo $file | cut -d'/' -f2)
+          if [[ ! $changed_folders =~ $folder ]]; then
+            changed_folders="$changed_folders $folder"
+          fi
+        done
+        
+        changed_folders=$(echo $changed_folders | xargs)
+        echo "changed_folders=$changed_folders" >> $GITHUB_OUTPUT
+        echo "Found changed folders: $changed_folders"
+    
     - name: Update Elastic Agent Configurations
+      id: update-script
+      if: steps.changed-folders.outputs.changed_folders != ''
       env:
         KIBANA_URL: ${{ secrets.KIBANA_URL }}
         KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PR_NUMBER: ${{ github.event.number }}
-        REPO_OWNER: ${{ github.repository_owner }}
-        REPO_NAME: ${{ github.event.repository.name }}
       run: |
-        python .github/scripts/update-elastic-agent.py
+        echo "Updating elastic-agent.yml for folders: ${{ steps.changed-folders.outputs.changed_folders }}"
+        output=$(python .github/scripts/update-elastic-agent.py ${{ steps.changed-folders.outputs.changed_folders }} 2>&1)
+        echo "$output"
+        echo "script_output<<EOF" >> $GITHUB_OUTPUT
+        echo "$output" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+      continue-on-error: true
     
-    - name: Check for changes and commit
+    - name: Commit and push changes
+      if: steps.update-script.outcome == 'success'
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        
-        if git diff --quiet; then
-          echo "No changes to commit"
-        else
-          git add monitors/*/elastic-agent.yml
-          git commit -m "Update elastic-agent.yml configurations - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          git push
-        fi
+        git add monitors/*/elastic-agent.yml
+        git commit -m "Update elastic-agent.yml configurations - $(date -u '+%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
+        git push
+    
+    - name: Post success PR comment
+      if: steps.update-script.outcome == 'success'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+          const changedFolders = '${{ steps.changed-folders.outputs.changed_folders }}';
+          
+          let locationDetails = '';
+          if (changedFolders) {
+            const folders = changedFolders.split(' ');
+            for (const folder of folders) {
+              locationDetails += `\n**📍 ${folder}**\n- File: \`monitors/${folder}/elastic-agent.yml\`\n`;
+            }
+          }
+          
+          const output = `## 🔄 Elastic Agent Configuration Update Results
+          *Updated at: ${timestamp}*
+          
+          ### ✅ Successfully Updated Locations
+          ${locationDetails}
+          
+          **Script Output:**
+          \`\`\`
+          ${{ steps.update-script.outputs.script_output }}
+          \`\`\`
+          
+          ---
+          **Summary:** Updated elastic-agent.yml configurations for ${changedFolders.split(' ').length} location(s)`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          });
+
+    - name: Post failure PR comment
+      if: steps.update-script.outcome == 'failure'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+          const output = `## 🔄 Elastic Agent Configuration Update Results
+          *Updated at: ${timestamp}*
+          
+          ### ❌ Update Failed
+          
+          There was an error updating the elastic-agent.yml files.
+          
+          **Error Details:**
+          \`\`\`
+          ${{ steps.update-script.outputs.script_output }}
+          \`\`\`
+          
+          **Changed folders:** ${{ steps.changed-folders.outputs.changed_folders }}`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          });
