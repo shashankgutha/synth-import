@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - 'monitors/**/*.json'
+  workflow_run:
+    workflows: ["Import Synthetics Monitors"]
+    types:
+      - completed
 
 permissions:
   contents: write
@@ -13,9 +17,37 @@ permissions:
 jobs:
   update-elastic-agent:
     runs-on: ubuntu-latest
+    # Run only on successful import workflows or PR events
+    if: github.event_name != 'workflow_run' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     
     steps:
+    - name: Check if update should proceed
+      if: github.event_name == 'workflow_run'
+      id: should-update
+      run: |
+        echo "Workflow run event details:"
+        echo "Event name: ${{ github.event_name }}"
+        echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
+        echo "Workflow run event: ${{ github.event.workflow_run.event }}"
+        echo "Workflow run name: ${{ github.event.workflow_run.name }}"
+        echo "Head commit message: ${{ github.event.workflow_run.head_commit.message }}"
+        
+        # Only proceed for push events (auto imports) or live manual imports
+        if [ "${{ github.event.workflow_run.event }}" = "push" ]; then
+          echo "Push event detected - proceeding with elastic agent update"
+          echo "should_update=true" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event.workflow_run.event }}" = "workflow_dispatch" ]; then
+          # For manual runs, we can't easily detect if it was dry run or fresh import
+          # So we'll proceed and let the change detection handle it
+          echo "Manual workflow dispatch detected - proceeding with elastic agent update"
+          echo "should_update=true" >> $GITHUB_OUTPUT
+        else
+          echo "Skipping elastic agent update for event type: ${{ github.event.workflow_run.event }}"
+          echo "should_update=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Checkout repository
+      if: github.event_name != 'workflow_run' || steps.should-update.outputs.should_update == 'true'
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -23,39 +55,61 @@ jobs:
         ref: ${{ github.head_ref }}
     
     - name: Setup Python
+      if: github.event_name != 'workflow_run' || steps.should-update.outputs.should_update == 'true'
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
     
     - name: Install Python dependencies
+      if: github.event_name != 'workflow_run' || steps.should-update.outputs.should_update == 'true'
       run: |
         python -m pip install --upgrade pip
         pip install requests
     
     - name: Get changed monitor folders
+      if: github.event_name != 'workflow_run' || steps.should-update.outputs.should_update == 'true'
       id: changed-folders
       run: |
         echo "Getting changed monitor JSON files..."
-        # Since workflow is triggered only by monitors/**/*.json changes, get those files directly
-        changed_files=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | grep -E '^monitors/.*\.json$')
-        echo "Changed JSON files: $changed_files"
+        echo "Event name: ${{ github.event_name }}"
         
-        # Extract unique folder names
-        changed_folders=""
-        for file in $changed_files; do
-          folder=$(echo $file | cut -d'/' -f2)
-          if [[ ! $changed_folders =~ $folder ]]; then
-            changed_folders="$changed_folders $folder"
-          fi
-        done
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          # For PR events, get changed files from PR
+          changed_files=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | grep -E '^monitors/.*\.json$')
+          echo "PR changed JSON files: $changed_files"
+        elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+          # For workflow_run events, get changed files from the triggering push
+          echo "Workflow run head SHA: ${{ github.event.workflow_run.head_sha }}"
+          echo "Workflow run event: ${{ github.event.workflow_run.event }}"
+          # Get files changed in the last commit that triggered the import workflow
+          changed_files=$(git diff --name-only HEAD~1..HEAD | grep -E '^monitors/.*\.json$' || true)
+          echo "Workflow run changed JSON files: $changed_files"
+        else
+          echo "Unsupported event type"
+          changed_files=""
+        fi
         
-        changed_folders=$(echo $changed_folders | xargs)
-        echo "changed_folders=$changed_folders" >> $GITHUB_OUTPUT
-        echo "Found changed folders: $changed_folders"
+        if [ -n "$changed_files" ]; then
+          # Extract unique folder names
+          changed_folders=""
+          for file in $changed_files; do
+            folder=$(echo $file | cut -d'/' -f2)
+            if [[ ! $changed_folders =~ $folder ]]; then
+              changed_folders="$changed_folders $folder"
+            fi
+          done
+          
+          changed_folders=$(echo $changed_folders | xargs)
+          echo "changed_folders=$changed_folders" >> $GITHUB_OUTPUT
+          echo "Found changed folders: $changed_folders"
+        else
+          echo "changed_folders=" >> $GITHUB_OUTPUT
+          echo "No changed monitor folders found"
+        fi
     
     - name: Update Elastic Agent Configurations
       id: update-script
-      if: steps.changed-folders.outputs.changed_folders != ''
+      if: (github.event_name != 'workflow_run' || steps.should-update.outputs.should_update == 'true') && steps.changed-folders.outputs.changed_folders != ''
       env:
         KIBANA_URL: ${{ secrets.KIBANA_URL }}
         KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
@@ -89,7 +143,7 @@ jobs:
           if (changedFolders) {
             const folders = changedFolders.split(' ');
             for (const folder of folders) {
-              locationDetails += `\n**📍 ${folder}**\n- File: \`monitors/${folder}/elastic-agent.yml\`\n`;
+              locationDetails += `\n** ${folder}**\n- File: \`monitors/${folder}/elastic-agent.yml\`\n`;
             }
           }
           
