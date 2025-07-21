@@ -11,6 +11,14 @@ on:
         options:
           - 'true'
           - 'false'
+      fresh_import:
+        description: 'Fresh import mode (import all monitors without checking existence - useful for new spaces)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
       space_id:
         description: 'Kibana space ID'
         required: false
@@ -66,7 +74,7 @@ jobs:
         python .github/scripts/import-synthetics-monitors.py
     
     - name: Import Synthetics Monitors (Live)
-      if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'false'
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'false' && github.event.inputs.fresh_import == 'false'
       env:
         KIBANA_URL: ${{ secrets.KIBANA_URL }}
         KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
@@ -75,6 +83,18 @@ jobs:
       run: |
         echo "Running import in LIVE mode..."
         python .github/scripts/import-synthetics-monitors.py
+    
+    - name: Import Synthetics Monitors (Fresh Import)
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.fresh_import == 'true'
+      env:
+        KIBANA_URL: ${{ secrets.KIBANA_URL }}
+        KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
+        KIBANA_SPACE_ID: ${{ github.event.inputs.space_id || 'default' }}
+        DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        FRESH_IMPORT: 'true'
+      run: |
+        echo "Running import in FRESH IMPORT mode..."
+        python .github/scripts/import-synthetics-monitors.py --fresh-import
     
     - name: Get changed monitor files
       if: github.event_name == 'push'
@@ -116,12 +136,21 @@ jobs:
     - name: Set import mode indicator
       run: |
         # Create a file to indicate the import mode for the export workflow
-        if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event.inputs.dry_run }}" = "false" ]; then
+        # Only set LIVE_IMPORT=true for actual live operations (not dry-runs)
+        if [ "${{ github.event_name }}" = "push" ] || ([ "${{ github.event.inputs.dry_run }}" = "false" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]); then
           echo "LIVE_IMPORT=true" >> $GITHUB_ENV
-          echo "live" > /tmp/import_mode.txt
+          if [ "${{ github.event.inputs.fresh_import }}" = "true" ]; then
+            echo "fresh-import" > /tmp/import_mode.txt
+          else
+            echo "live" > /tmp/import_mode.txt
+          fi
         else
           echo "LIVE_IMPORT=false" >> $GITHUB_ENV
-          echo "dry-run" > /tmp/import_mode.txt
+          if [ "${{ github.event.inputs.fresh_import }}" = "true" ]; then
+            echo "fresh-import-dry-run" > /tmp/import_mode.txt
+          else
+            echo "dry-run" > /tmp/import_mode.txt
+          fi
         fi
         echo "Import mode: $(cat /tmp/import_mode.txt)"
     

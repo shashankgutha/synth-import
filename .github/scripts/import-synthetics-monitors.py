@@ -213,7 +213,7 @@ class SyntheticsImporter:
         """Sanitize filename by replacing invalid characters"""
         return re.sub(r'[^a-zA-Z0-9.-]', '_', name)
 
-    def import_monitors(self, dry_run=False, changed_files_filter=None):
+    def import_monitors(self, dry_run=False, changed_files_filter=None, fresh_import=False):
         """Main import function"""
         try:
             # Find monitor files
@@ -289,7 +289,36 @@ class SyntheticsImporter:
                     print(f"\nProcessing monitor: {monitor_name} ({config_id})")
                     print(f"New locations to deploy: {len(new_locations)}")
                     
-                    # Get existing monitor configuration
+                    if fresh_import:
+                        # Fresh import mode - skip existence check and create directly
+                        if dry_run:
+                            print(f"[DRY RUN] Would create (fresh): {monitor_name} with {len(new_locations)} locations")
+                            results['created'].append({'name': monitor_name, 'config_id': config_id})
+                            continue
+                        
+                        print(f"Fresh import - creating monitor without existence check...")
+                        create_response = self.create_monitor(config)
+                        
+                        if create_response is not None:
+                            created_config_id = create_response.get('id') or create_response.get('config_id')
+                            print(f"Monitor created successfully with ID: {created_config_id}")
+                            
+                            results['created'].append({
+                                'name': monitor_name,
+                                'config_id': created_config_id or config_id,
+                                'total_locations': len(new_locations),
+                                'operation': 'fresh_create'
+                            })
+                            print(f"Successfully created monitor (fresh import)")
+                        else:
+                            results['failed'].append({
+                                'name': monitor_name,
+                                'config_id': config_id,
+                                'operation': 'fresh_create'
+                            })
+                        continue
+                    
+                    # Get existing monitor configuration (normal mode)
                     existing_monitor = self.get_existing_monitor(config_id)
                     
                     if dry_run:
@@ -303,7 +332,7 @@ class SyntheticsImporter:
                             results['created'].append({'name': monitor_name, 'config_id': config_id})
                         continue
                     
-                    # Perform actual create/update/restore workflow
+                    # Perform actual create/update/restore workflow (normal mode)
                     if existing_monitor:
                         # Monitor exists - merge locations and update
                         print(f"Monitor exists, merging locations...")
@@ -369,7 +398,13 @@ class SyntheticsImporter:
                     })
             
             # Print summary
-            print(f"\n{'DRY RUN ' if dry_run else ''}Import Summary:")
+            mode_text = ""
+            if dry_run:
+                mode_text = "DRY RUN "
+            elif fresh_import:
+                mode_text = "FRESH IMPORT "
+            
+            print(f"\n{mode_text}Import Summary:")
             print(f"{'=' * 50}")
             print(f"Created: {len(results['created'])}")
             print(f"Updated: {len(results['updated'])}")
@@ -410,6 +445,8 @@ def main():
     parser = argparse.ArgumentParser(description='Import Synthetics Monitors')
     parser.add_argument('--changed-files', action='store_true', 
                        help='Only process changed files from CHANGED_FILES environment variable')
+    parser.add_argument('--fresh-import', action='store_true',
+                       help='Fresh import mode - import all monitors without checking existence')
     args = parser.parse_args()
     
     kibana_url = os.getenv('KIBANA_URL')
@@ -428,7 +465,12 @@ def main():
         sys.exit(1)
     
     print(f"Kibana Synthetics Monitor Import")
-    print(f"{'DRY RUN MODE' if dry_run else 'LIVE MODE'}")
+    if args.fresh_import:
+        print("FRESH IMPORT MODE - Importing all monitors without existence check")
+    elif dry_run:
+        print("DRY RUN MODE")
+    else:
+        print("LIVE MODE")
     if args.changed_files:
         print("CHANGED FILES MODE - Processing only modified monitors")
     print("=" * 50)
@@ -439,7 +481,7 @@ def main():
     print()
     
     importer = SyntheticsImporter(kibana_url, api_key, space_id)
-    importer.import_monitors(dry_run=dry_run, changed_files_filter=changed_files)
+    importer.import_monitors(dry_run=dry_run, changed_files_filter=changed_files, fresh_import=args.fresh_import)
 
 if __name__ == "__main__":
     main()
