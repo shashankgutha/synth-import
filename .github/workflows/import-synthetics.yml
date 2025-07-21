@@ -63,7 +63,7 @@ jobs:
         echo "All JSON files are valid"
     
     - name: Import Synthetics Monitors (Dry Run)
-      if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' && github.event.inputs.fresh_import == 'false'
       env:
         KIBANA_URL: ${{ secrets.KIBANA_URL }}
         KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
