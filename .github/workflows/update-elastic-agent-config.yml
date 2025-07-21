@@ -1,10 +1,6 @@
 name: Update Elastic Agent Config
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'monitors/**/*.json'
   workflow_run:
     workflows: ["Import Synthetics Monitors"]
     types:
@@ -52,7 +48,6 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
-        ref: ${{ github.head_ref }}
     
     - name: Setup Python
       if: github.event_name != 'workflow_run' || steps.should-update.outputs.should_update == 'true'
@@ -72,22 +67,12 @@ jobs:
       run: |
         echo "Getting changed monitor JSON files..."
         echo "Event name: ${{ github.event_name }}"
+        echo "Workflow run head SHA: ${{ github.event.workflow_run.head_sha }}"
+        echo "Workflow run event: ${{ github.event.workflow_run.event }}"
         
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          # For PR events, get changed files from PR
-          changed_files=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | grep -E '^monitors/.*\.json$')
-          echo "PR changed JSON files: $changed_files"
-        elif [ "${{ github.event_name }}" = "workflow_run" ]; then
-          # For workflow_run events, get changed files from the triggering push
-          echo "Workflow run head SHA: ${{ github.event.workflow_run.head_sha }}"
-          echo "Workflow run event: ${{ github.event.workflow_run.event }}"
-          # Get files changed in the last commit that triggered the import workflow
-          changed_files=$(git diff --name-only HEAD~1..HEAD | grep -E '^monitors/.*\.json$' || true)
-          echo "Workflow run changed JSON files: $changed_files"
-        else
-          echo "Unsupported event type"
-          changed_files=""
-        fi
+        # For workflow_run events, get changed files from the triggering push
+        changed_files=$(git diff --name-only HEAD~1..HEAD | grep -E '^monitors/.*\.json$' || true)
+        echo "Workflow run changed JSON files: $changed_files"
         
         if [ -n "$changed_files" ]; then
           # Extract unique folder names
@@ -109,7 +94,7 @@ jobs:
     
     - name: Update Elastic Agent Configurations
       id: update-script
-      if: (github.event_name != 'workflow_run' || steps.should-update.outputs.should_update == 'true') && steps.changed-folders.outputs.changed_folders != ''
+      if: steps.should-update.outputs.should_update == 'true' && steps.changed-folders.outputs.changed_folders != ''
       env:
         KIBANA_URL: ${{ secrets.KIBANA_URL }}
         KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
@@ -131,66 +116,42 @@ jobs:
         git commit -m "Update elastic-agent.yml configurations - $(date -u '+%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
         git push
     
-    - name: Post success PR comment
-      if: steps.update-script.outcome == 'success'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
-          const changedFolders = '${{ steps.changed-folders.outputs.changed_folders }}';
-          
-          let locationDetails = '';
-          if (changedFolders) {
-            const folders = changedFolders.split(' ');
-            for (const folder of folders) {
-              locationDetails += `\n** ${folder}**\n- File: \`monitors/${folder}/elastic-agent.yml\`\n`;
-            }
-          }
-          
-          const output = `## 🔄 Elastic Agent Configuration Update Results
-          *Updated at: ${timestamp}*
-          
-          ### ✅ Successfully Updated Locations
-          ${locationDetails}
-          
-          **Script Output:**
-          \`\`\`
-          ${{ steps.update-script.outputs.script_output }}
-          \`\`\`
-          
-          ---
-          **Summary:** Updated elastic-agent.yml configurations for ${changedFolders.split(' ').length} location(s)`;
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: output
-          });
-
-    - name: Post failure PR comment
-      if: steps.update-script.outcome == 'failure'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
-          const output = `## 🔄 Elastic Agent Configuration Update Results
-          *Updated at: ${timestamp}*
-          
-          ### ❌ Update Failed
-          
-          There was an error updating the elastic-agent.yml files.
-          
-          **Error Details:**
-          \`\`\`
-          ${{ steps.update-script.outputs.script_output }}
-          \`\`\`
-          
-          **Changed folders:** ${{ steps.changed-folders.outputs.changed_folders }}`;
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: output
-          });
+    - name: Create deployment summary
+      if: always() && steps.should-update.outputs.should_update == 'true'
+      run: |
+        echo "## 🔄 Elastic Agent Configuration Update Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Triggered by**: Import Synthetics Monitors workflow" >> $GITHUB_STEP_SUMMARY
+        echo "**Workflow run event**: ${{ github.event.workflow_run.event }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit**: ${{ github.event.workflow_run.head_sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.update-script.outcome }}" = "success" ]; then
+          echo "### ✅ Update Results - Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Changed folders**: ${{ steps.changed-folders.outputs.changed_folders }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Updated Files**:" >> $GITHUB_STEP_SUMMARY
+          for folder in ${{ steps.changed-folders.outputs.changed_folders }}; do
+            echo "- \`monitors/$folder/elastic-agent.yml\`" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Script Output**:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.update-script.outputs.script_output }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ steps.update-script.outcome }}" = "failure" ]; then
+          echo "### ❌ Update Results - Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Changed folders**: ${{ steps.changed-folders.outputs.changed_folders }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Error Details**:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.update-script.outputs.script_output }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### ℹ️ No Updates Required" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No monitor folders with JSON changes were found that required elastic-agent.yml updates." >> $GITHUB_STEP_SUMMARY
+        fi

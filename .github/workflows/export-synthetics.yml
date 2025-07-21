@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     # Allow manual trigger
   workflow_run:
-    workflows: ["Import Synthetics Monitors"]
+    workflows: ["Update Elastic Agent Config"]
     types:
       - completed
 
