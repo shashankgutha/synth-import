@@ -66,10 +66,12 @@ class ElasticAgentUpdater:
         """Process K8SSEC_ prefixed values and convert to Kubernetes ${} format"""
         import re
         
-        # Pattern to match K8SSEC_ prefixed values (both quoted and unquoted)
+        # Pattern to match K8SSEC_ prefixed values (supports dots, quotes, and single quotes)
         # Matches: K8SSEC_ES_USERNAME -> ES_USERNAME
         # Matches: "K8SSEC_ES_USERNAME" -> ${ES_USERNAME}
-        pattern = r'"?K8SSEC_([A-Z_][A-Z0-9_]*)"?'
+        # Matches: K8SSEC_env.CLIENT_SEC -> env.CLIENT_SEC
+        # Matches: "'K8SSEC_env.CLIENT_SEC'" -> ${env.CLIENT_SEC}
+        pattern = r'''['"]*K8SSEC_([A-Z_][A-Z0-9_.]*)['"]*'''
         
         def replace_k8s_secret(match):
             secret_name = match.group(1)  # Extract the part after K8SSEC_
