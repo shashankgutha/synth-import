@@ -171,9 +171,8 @@ class SyntheticsExporter:
                             'total_locations': len(locations),
                             'locations': monitor_locations
                         })
-                    
-                except Exception as e:
-                    print(f"Failed to export monitor {monitor.get('config_id', 'unknown')}: {str(e)}")
+                    except Exception as e:
+                        print(f"Failed to export monitor {monitor.get('config_id', 'unknown')}: {str(e)}")
                 
                 # Add this space's results to the overall summary
                 all_exported_monitors.extend(exported_monitors)
