@@ -61,13 +61,40 @@ class ElasticAgentUpdater:
         except requests.exceptions.RequestException as e:
             raise Exception(f"Failed to fetch elastic-agent.yml: {str(e)}")
 
+    def process_k8s_secrets(self, config_content):
+        """Process K8SSEC_ prefixed values and convert to Kubernetes ${} format"""
+        import re
+        
+        # Pattern to match K8SSEC_ prefixed values
+        # Matches: K8SSEC_ES_USERNAME -> ES_USERNAME
+        pattern = r'K8SSEC_([A-Z_][A-Z0-9_]*)'
+        
+        def replace_k8s_secret(match):
+            secret_name = match.group(1)  # Extract the part after K8SSEC_
+            return f"${{{secret_name}}}"
+        
+        # Replace all K8SSEC_ patterns with ${} format
+        processed_content = re.sub(pattern, replace_k8s_secret, config_content)
+        
+        # Count replacements for logging
+        matches = re.findall(pattern, config_content)
+        if matches:
+            print(f"Converted {len(matches)} K8SSEC_ references to Kubernetes secrets:")
+            for match in matches:
+                print(f"  K8SSEC_{match} -> ${{{match}}}")
+        
+        return processed_content
+
     def update_elastic_agent_file(self, folder_name, config_content):
         """Update elastic-agent.yml file in specified folder"""
         file_path = Path('monitors') / folder_name / 'elastic-agent.yml'
         
         try:
+            # Process K8SSEC_ references for Kubernetes compatibility
+            processed_content = self.process_k8s_secrets(config_content)
+            
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(config_content)
+                f.write(processed_content)
             return True
         except Exception as e:
             print(f"Error writing file {file_path}: {e}")
