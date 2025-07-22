@@ -62,10 +62,10 @@ class SyntheticsExporter:
         
         return all_monitors
 
-    def get_monitor_config(self, config_id):
-        """Fetch detailed configuration for a specific monitor"""
-        print(f"Fetching detailed config for monitor: {config_id}")
-        return self.make_request(f"/api/synthetics/monitors/{config_id}")
+    def get_monitor_config(self, config_id, space_id='default'):
+        """Fetch detailed configuration for a specific monitor in a specific space"""
+        print(f"Fetching detailed config for monitor: {config_id} in space: {space_id}")
+        return self.make_request(f"/s/{space_id}/api/synthetics/monitors/{config_id}")
 
     def ensure_output_directory(self):
         """Create output directory if it doesn't exist"""
@@ -105,7 +105,7 @@ class SyntheticsExporter:
                     config_id = monitor.get('config_id')
                     monitor_name = monitor.get('name', config_id)
                     
-                    detailed_config = self.get_monitor_config(config_id)
+                    detailed_config = self.get_monitor_config(config_id, space_id)
                     
                     # Get locations from the detailed config
                     locations = detailed_config.get('locations', [])
