@@ -1,0 +1,61 @@
+{
+  "type": "http",
+  "enabled": true,
+  "alert": {
+    "status": {
+      "enabled": true
+    },
+    "tls": {
+      "enabled": true
+    }
+  },
+  "schedule": {
+    "number": "3",
+    "unit": "m"
+  },
+  "config_id": "b1f025d4-0737-41f4-877b-d8cdec7f9035",
+  "timeout": "17",
+  "name": "google http",
+  "locations": [
+    {
+      "id": "asia-south1-a",
+      "label": "Asia/Pacific - India",
+      "geo": {
+        "lat": 19.07609,
+        "lon": 72.877426
+      },
+      "isServiceManaged": true
+    }
+  ],
+  "namespace": "default",
+  "origin": "ui",
+  "id": "b1f025d4-0737-41f4-877b-d8cdec7f9035",
+  "max_attempts": 2,
+  "revision": 6,
+  "__ui": {
+    "is_tls_enabled": false
+  },
+  "max_redirects": "0",
+  "response.include_body": "on_error",
+  "response.include_headers": true,
+  "check.request.body": {
+    "type": "text",
+    "value": ""
+  },
+  "check.request.method": "GET",
+  "mode": "any",
+  "response.include_body_max_bytes": "1024",
+  "ipv4": true,
+  "ipv6": true,
+  "ssl.verification_mode": "full",
+  "ssl.supported_protocols": [
+    "TLSv1.1",
+    "TLSv1.2",
+    "TLSv1.3"
+  ],
+  "created_at": "2025-07-17T15:10:16.595Z",
+  "updated_at": "2025-07-17T16:35:00.719Z",
+  "retest_on_failure": true,
+  "url": "https://www.google.com",
+  "spaceId": "default"
+}
