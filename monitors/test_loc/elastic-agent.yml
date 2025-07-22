@@ -1,6 +1,13 @@
 id: fleet-first-agent-policy
-revision: 28
+revision: 31
 outputs:
+  35a734ba-e4aa-40db-bc47-8dca570c8cf9:
+    type: elasticsearch
+    username: ${ES_USERNAME}
+    password: ${ES_PASSWORD}
+    hosts:
+      - http://173.203.133.187:9656
+    preset: balanced
   default:
     type: elasticsearch
     hosts:
@@ -12,118 +19,141 @@ fleet:
     - >-
       https://314d3ae77a3f4c509d11fd47e5c8e47f.fleet.us-east-2.aws.elastic-cloud.com:443
 output_permissions:
-  default:
-    _elastic_agent_monitoring:
-      indices:
-        - names:
-            - logs-elastic_agent.apm_server-default
-          privileges: &ref_0
-            - auto_configure
-            - create_doc
-        - names:
-            - metrics-elastic_agent.apm_server-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.auditbeat-default
-          privileges: *ref_0
-        - names:
-            - metrics-elastic_agent.auditbeat-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.cloud_defend-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.cloudbeat-default
-          privileges: *ref_0
-        - names:
-            - metrics-elastic_agent.cloudbeat-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent-default
-          privileges: *ref_0
-        - names:
-            - metrics-elastic_agent.elastic_agent-default
-          privileges: *ref_0
-        - names:
-            - metrics-elastic_agent.endpoint_security-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.endpoint_security-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.filebeat_input-default
-          privileges: *ref_0
-        - names:
-            - metrics-elastic_agent.filebeat_input-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.filebeat-default
-          privileges: *ref_0
-        - names:
-            - metrics-elastic_agent.filebeat-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.fleet_server-default
-          privileges: *ref_0
-        - names:
-            - metrics-elastic_agent.fleet_server-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.heartbeat-default
-          privileges: *ref_0
-        - names:
-            - metrics-elastic_agent.heartbeat-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.metricbeat-default
-          privileges: *ref_0
-        - names:
-            - metrics-elastic_agent.metricbeat-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.osquerybeat-default
-          privileges: *ref_0
-        - names:
-            - metrics-elastic_agent.osquerybeat-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.packetbeat-default
-          privileges: *ref_0
-        - names:
-            - metrics-elastic_agent.packetbeat-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.pf_elastic_collector-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.pf_elastic_symbolizer-default
-          privileges: *ref_0
-        - names:
-            - logs-elastic_agent.pf_host_agent-default
-          privileges: *ref_0
+  35a734ba-e4aa-40db-bc47-8dca570c8cf9:
     _elastic_agent_checks:
-      cluster:
+      cluster: &ref_7
         - monitor
     083cca9c-2d6e-4176-85ae-f4fa1276dc73-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default:
       indices:
         - names:
             - synthetics-browser-default
-          privileges: &ref_1
+          privileges: &ref_0
             - auto_configure
             - create_doc
             - read
         - names:
             - synthetics-browser.network-default
-          privileges: &ref_2
+          privileges: &ref_1
             - auto_configure
             - create_doc
             - read
         - names:
             - synthetics-browser.screenshot-default
+          privileges: &ref_2
+            - auto_configure
+            - create_doc
+            - read
+    1f01f76a-b118-4328-8e82-4997a347ad35-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default:
+      indices:
+        - names:
+            - synthetics-browser-default
           privileges: &ref_3
             - auto_configure
             - create_doc
             - read
+        - names:
+            - synthetics-browser.network-default
+          privileges: &ref_4
+            - auto_configure
+            - create_doc
+            - read
+        - names:
+            - synthetics-browser.screenshot-default
+          privileges: &ref_5
+            - auto_configure
+            - create_doc
+            - read
+  default:
+    _elastic_agent_monitoring:
+      indices:
+        - names:
+            - logs-elastic_agent.apm_server-default
+          privileges: &ref_6
+            - auto_configure
+            - create_doc
+        - names:
+            - metrics-elastic_agent.apm_server-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.auditbeat-default
+          privileges: *ref_6
+        - names:
+            - metrics-elastic_agent.auditbeat-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.cloud_defend-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.cloudbeat-default
+          privileges: *ref_6
+        - names:
+            - metrics-elastic_agent.cloudbeat-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent-default
+          privileges: *ref_6
+        - names:
+            - metrics-elastic_agent.elastic_agent-default
+          privileges: *ref_6
+        - names:
+            - metrics-elastic_agent.endpoint_security-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.endpoint_security-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.filebeat_input-default
+          privileges: *ref_6
+        - names:
+            - metrics-elastic_agent.filebeat_input-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.filebeat-default
+          privileges: *ref_6
+        - names:
+            - metrics-elastic_agent.filebeat-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.fleet_server-default
+          privileges: *ref_6
+        - names:
+            - metrics-elastic_agent.fleet_server-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.heartbeat-default
+          privileges: *ref_6
+        - names:
+            - metrics-elastic_agent.heartbeat-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.metricbeat-default
+          privileges: *ref_6
+        - names:
+            - metrics-elastic_agent.metricbeat-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.osquerybeat-default
+          privileges: *ref_6
+        - names:
+            - metrics-elastic_agent.osquerybeat-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.packetbeat-default
+          privileges: *ref_6
+        - names:
+            - metrics-elastic_agent.packetbeat-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.pf_elastic_collector-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.pf_elastic_symbolizer-default
+          privileges: *ref_6
+        - names:
+            - logs-elastic_agent.pf_host_agent-default
+          privileges: *ref_6
+    _elastic_agent_checks:
+      cluster: *ref_7
 agent:
   download:
     sourceURI: https://artifacts.elastic.co/downloads/
@@ -146,7 +176,7 @@ inputs:
     name: google-test loc-default
     revision: 9
     type: synthetics/browser
-    use_output: default
+    use_output: 35a734ba-e4aa-40db-bc47-8dca570c8cf9
     meta:
       package:
         name: synthetics
@@ -165,7 +195,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_1
+              indices: *ref_0
         __ui:
           is_tls_enabled: true
           script_source:
@@ -203,7 +233,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_2
+              indices: *ref_1
         processors:
           - add_fields:
               target: ''
@@ -216,7 +246,88 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
+              indices: *ref_2
+        processors:
+          - add_fields:
+              target: ''
+              fields:
+                monitor.fleet_managed: true
+  - id: >-
+      synthetics/browser-synthetics-1f01f76a-b118-4328-8e82-4997a347ad35-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
+    name: log_google-test loc-default
+    revision: 2
+    type: synthetics/browser
+    use_output: 35a734ba-e4aa-40db-bc47-8dca570c8cf9
+    meta:
+      package:
+        name: synthetics
+        version: 1.3.0
+    data_stream:
+      namespace: default
+    package_policy_id: >-
+      1f01f76a-b118-4328-8e82-4997a347ad35-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
+    streams:
+      - id: 1f01f76a-b118-4328-8e82-4997a347ad35
+        name: log_google
+        type: browser
+        enabled: false
+        data_stream:
+          dataset: browser
+          type: synthetics
+          elasticsearch:
+            privileges:
               indices: *ref_3
+        __ui:
+          is_tls_enabled: true
+          script_source:
+            is_generated_script: false
+            file_name: ''
+        origin: ui
+        run_from.id: 7f74d8f3-afd0-411b-b6ed-96e41a61eb71
+        run_from.geo.name: test loc
+        schedule: '@every 10m'
+        timeout: null
+        throttling:
+          download: 5
+          upload: 3
+          latency: 20
+        source.inline.script: |-
+          step('Go to https://www.google.com', async () => {
+            await page.goto('https://www.google.com');
+          });
+        screenshots: 'on'
+        max_attempts: 2
+        processors:
+          - add_fields:
+              fields:
+                meta:
+                  space_id: default
+                monitor.fleet_managed: true
+                config_id: 1f01f76a-b118-4328-8e82-4997a347ad35
+                monitor.project.name: ''
+                monitor.project.id: ''
+              target: ''
+      - id: >-
+          synthetics/browser-browser.network-1f01f76a-b118-4328-8e82-4997a347ad35-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
+        data_stream:
+          dataset: browser.network
+          type: synthetics
+          elasticsearch:
+            privileges:
+              indices: *ref_4
+        processors:
+          - add_fields:
+              target: ''
+              fields:
+                monitor.fleet_managed: true
+      - id: >-
+          synthetics/browser-browser.screenshot-1f01f76a-b118-4328-8e82-4997a347ad35-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
+        data_stream:
+          dataset: browser.screenshot
+          type: synthetics
+          elasticsearch:
+            privileges:
+              indices: *ref_5
         processors:
           - add_fields:
               target: ''
@@ -224,8 +335,8 @@ inputs:
                 monitor.fleet_managed: true
 signed:
   data: >-
-    eyJpZCI6ImZsZWV0LWZpcnN0LWFnZW50LXBvbGljeSIsImFnZW50Ijp7ImZlYXR1cmVzIjp7fSwicHJvdGVjdGlvbiI6eyJlbmFibGVkIjpmYWxzZSwidW5pbnN0YWxsX3Rva2VuX2hhc2giOiJvbnlObzcra01IM2dXbFdYcDlreXIyTGwwT0RJc2pMZXlzdTIwYjJHejNFPSIsInNpZ25pbmdfa2V5IjoiTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFYVFJZ2NlOFdsQUtxSjZ4d1dWZGorbFRJdzh4dlR3eUNPRkFEZWNwSUh5OWJ5UkpmR3Via09odTB2eWdEQkJzUXBFNFNEbWdaOExrUm95VDhyMWFtclE9PSJ9fSwiaW5wdXRzIjpbeyJpZCI6InN5bnRoZXRpY3MvYnJvd3Nlci1zeW50aGV0aWNzLTA4M2NjYTljLTJkNmUtNDE3Ni04NWFlLWY0ZmExMjc2ZGM3My03Zjc0ZDhmMy1hZmQwLTQxMWItYjZlZC05NmU0MWE2MWViNzEtZGVmYXVsdCIsIm5hbWUiOiJnb29nbGUtdGVzdCBsb2MtZGVmYXVsdCIsInJldmlzaW9uIjo5LCJ0eXBlIjoic3ludGhldGljcy9icm93c2VyIn1dfQ==
+    eyJpZCI6ImZsZWV0LWZpcnN0LWFnZW50LXBvbGljeSIsImFnZW50Ijp7ImZlYXR1cmVzIjp7fSwicHJvdGVjdGlvbiI6eyJlbmFibGVkIjpmYWxzZSwidW5pbnN0YWxsX3Rva2VuX2hhc2giOiJvbnlObzcra01IM2dXbFdYcDlreXIyTGwwT0RJc2pMZXlzdTIwYjJHejNFPSIsInNpZ25pbmdfa2V5IjoiTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFYVFJZ2NlOFdsQUtxSjZ4d1dWZGorbFRJdzh4dlR3eUNPRkFEZWNwSUh5OWJ5UkpmR3Via09odTB2eWdEQkJzUXBFNFNEbWdaOExrUm95VDhyMWFtclE9PSJ9fSwiaW5wdXRzIjpbeyJpZCI6InN5bnRoZXRpY3MvYnJvd3Nlci1zeW50aGV0aWNzLTA4M2NjYTljLTJkNmUtNDE3Ni04NWFlLWY0ZmExMjc2ZGM3My03Zjc0ZDhmMy1hZmQwLTQxMWItYjZlZC05NmU0MWE2MWViNzEtZGVmYXVsdCIsIm5hbWUiOiJnb29nbGUtdGVzdCBsb2MtZGVmYXVsdCIsInJldmlzaW9uIjo5LCJ0eXBlIjoic3ludGhldGljcy9icm93c2VyIn0seyJpZCI6InN5bnRoZXRpY3MvYnJvd3Nlci1zeW50aGV0aWNzLTFmMDFmNzZhLWIxMTgtNDMyOC04ZTgyLTQ5OTdhMzQ3YWQzNS03Zjc0ZDhmMy1hZmQwLTQxMWItYjZlZC05NmU0MWE2MWViNzEtZGVmYXVsdCIsIm5hbWUiOiJsb2dfZ29vZ2xlLXRlc3QgbG9jLWRlZmF1bHQiLCJyZXZpc2lvbiI6MiwidHlwZSI6InN5bnRoZXRpY3MvYnJvd3NlciJ9XX0=
   signature: >-
-    MEUCIDK6Z6Gxs6YuuuiAF0KLYhz3/FQMTooyfX5gUEIm4jm+AiEAwBpHxcWXpc+cVe7eJCDlEA69WhUDpy6l4PxywlfeNkw=
+    MEUCIBVaALznR60WuNcmcYAaC95D//HHJXf3Pj3fm4spP7vzAiEA3IP5VI2OgfKWfmSwJGsGNdT7DEF90qV5b5boFxvkYVc=
 secret_references: []
 namespaces: []
