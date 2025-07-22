@@ -66,38 +66,37 @@ class ElasticAgentUpdater:
         """Process K8SSEC_ prefixed values and convert to Kubernetes ${} format"""
         import re
         
-        # Process in multiple passes to handle different patterns
         processed_content = config_content
+        replacements_made = []
         
         # Pattern 1: Handle QK8SSEC_ (Q prefix for single quotes)
-        def replace_q_k8s_secret(match):
-            secret_name = match.group(1)
-            return f"'${{{secret_name}}}'"
-        
         q_pattern = r'QK8SSEC_([A-Za-z_][A-Za-z0-9_.]*)'
-        processed_content = re.sub(q_pattern, replace_q_k8s_secret, processed_content)
+        q_matches = re.findall(q_pattern, processed_content)
         
-        # Pattern 2: Handle regular K8SSEC_ (with or without quotes)
-        def replace_regular_k8s_secret(match):
-            secret_name = match.group(1)
-            return f"${{{secret_name}}}"
+        for match in q_matches:
+            old_value = f"QK8SSEC_{match}"
+            new_value = f"'${{{match}}}'"
+            processed_content = processed_content.replace(old_value, new_value)
+            replacements_made.append(f"  QK8SSEC_{match} -> '${{{match}}}'")
         
-        # This pattern matches K8SSEC_ followed by alphanumeric/underscore/dot characters
-        # It stops at word boundaries or common delimiters
-        regular_pattern = r'K8SSEC_([A-Za-z_][A-Za-z0-9_.]*?)(?=\s|$|"|\'|,|;|:|\)|\]|\}|$)'
-        processed_content = re.sub(regular_pattern, replace_regular_k8s_secret, processed_content)
+        # Pattern 2: Handle regular K8SSEC_ (but not QK8SSEC_)
+        # Use word boundaries to ensure we capture complete tokens
+        regular_pattern = r'\bK8SSEC_([A-Za-z_][A-Za-z0-9_.]*)\b'
+        regular_matches = re.findall(regular_pattern, processed_content)
         
-        # Count and log replacements
-        q_matches = re.findall(r'QK8SSEC_([A-Za-z_][A-Za-z0-9_.]*)', config_content)
-        regular_matches = re.findall(r'(?<!Q)K8SSEC_([A-Za-z_][A-Za-z0-9_.]*)', config_content)
+        for match in regular_matches:
+            old_value = f"K8SSEC_{match}"
+            new_value = f"${{{match}}}"
+            # Only replace if it's not part of QK8SSEC_ (already handled above)
+            if f"Q{old_value}" not in processed_content:
+                processed_content = processed_content.replace(old_value, new_value)
+                replacements_made.append(f"  K8SSEC_{match} -> ${{{match}}}")
         
-        total_matches = len(q_matches) + len(regular_matches)
-        if total_matches > 0:
-            print(f"Converted {total_matches} K8SSEC_ references to Kubernetes secrets:")
-            for match in q_matches:
-                print(f"  QK8SSEC_{match} -> '${{{match}}}'")
-            for match in regular_matches:
-                print(f"  K8SSEC_{match} -> ${{{match}}}")
+        # Log replacements
+        if replacements_made:
+            print(f"Converted {len(replacements_made)} K8SSEC_ references to Kubernetes secrets:")
+            for replacement in replacements_made:
+                print(replacement)
         
         return processed_content
 

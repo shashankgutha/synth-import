@@ -134,53 +134,91 @@ jobs:
     
     - name: Create deployment summary
       if: always() && steps.should-update.outputs.should_update == 'true'
+      env:
+        CHANGED_FOLDERS: ${{ steps.changed-folders.outputs.changed_folders }}
+        UPDATE_OUTCOME: ${{ steps.update-script.outcome }}
+        SCRIPT_OUTPUT: ${{ steps.update-script.outputs.script_output }}
+        BRANCH_NAME: ${{ env.branch_name }}
+        WORKFLOW_EVENT: ${{ github.event.workflow_run.event }}
+        HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
       run: |
-        echo "## 🔄 Elastic Agent Configuration Update Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Triggered by**: Import Synthetics Monitors workflow" >> $GITHUB_STEP_SUMMARY
-        echo "**Workflow run event**: ${{ github.event.workflow_run.event }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Commit**: ${{ github.event.workflow_run.head_sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
+        # Create timestamp
+        TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || echo "Unknown")
         
-        if [ "${{ steps.update-script.outcome }}" = "success" ]; then
-          echo "### ✅ Update Results - Success" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Changed folders**: ${{ steps.changed-folders.outputs.changed_folders }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -n "${{ env.branch_name }}" ]; then
-            echo "**Branch created**: \`${{ env.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
+        # Start summary
+        {
+          echo "## 🔄 Elastic Agent Configuration Update Summary"
+          echo ""
+          echo "**Triggered by**: Import Synthetics Monitors workflow"
+          echo "**Workflow run event**: ${WORKFLOW_EVENT:-unknown}"
+          echo "**Commit**: ${HEAD_SHA:-unknown}"
+          echo "**Timestamp**: $TIMESTAMP"
+          echo ""
+        } >> $GITHUB_STEP_SUMMARY
+        
+        # Handle different outcomes
+        if [ "$UPDATE_OUTCOME" = "success" ]; then
+          {
+            echo "### ✅ Update Results - Success"
+            echo ""
+            echo "**Changed folders**: ${CHANGED_FOLDERS:-none}"
+            echo ""
+          } >> $GITHUB_STEP_SUMMARY
+          
+          # Add branch info if available
+          if [ -n "$BRANCH_NAME" ]; then
+            echo "**Branch created**: \`$BRANCH_NAME\`" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
+          
+          # Add updated files list
           echo "**Updated Files**:" >> $GITHUB_STEP_SUMMARY
-          for folder in ${{ steps.changed-folders.outputs.changed_folders }}; do
-            echo "- \`monitors/$folder/elastic-agent.yml\`" >> $GITHUB_STEP_SUMMARY
-          done
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Script Output**:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.update-script.outputs.script_output }}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔍 Next Steps" >> $GITHUB_STEP_SUMMARY
-          if [ -n "${{ env.branch_name }}" ]; then
-            echo "1. Review the changes in branch \`${{ env.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "2. Create a pull request to merge the updated configurations" >> $GITHUB_STEP_SUMMARY
-            echo "3. Merge the PR to apply the elastic-agent.yml updates" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$CHANGED_FOLDERS" ]; then
+            for folder in $CHANGED_FOLDERS; do
+              echo "- \`monitors/$folder/elastic-agent.yml\`" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "- No files updated" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Add script output
+          {
+            echo ""
+            echo "**Script Output**:"
+            echo "\`\`\`"
+            echo "${SCRIPT_OUTPUT:-No output available}"
+            echo "\`\`\`"
+            echo ""
+            echo "### 🔍 Next Steps"
+          } >> $GITHUB_STEP_SUMMARY
+          
+          # Add next steps
+          if [ -n "$BRANCH_NAME" ]; then
+            {
+              echo "1. Review the changes in branch \`$BRANCH_NAME\`"
+              echo "2. Create a pull request to merge the updated configurations"
+              echo "3. Merge the PR to apply the elastic-agent.yml updates"
+            } >> $GITHUB_STEP_SUMMARY
           else
             echo "No changes were made to elastic-agent.yml files" >> $GITHUB_STEP_SUMMARY
           fi
-        elif [ "${{ steps.update-script.outcome }}" = "failure" ]; then
-          echo "### ❌ Update Results - Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Changed folders**: ${{ steps.changed-folders.outputs.changed_folders }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Error Details**:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.update-script.outputs.script_output }}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          
+        elif [ "$UPDATE_OUTCOME" = "failure" ]; then
+          {
+            echo "### ❌ Update Results - Failed"
+            echo ""
+            echo "**Changed folders**: ${CHANGED_FOLDERS:-none}"
+            echo ""
+            echo "**Error Details**:"
+            echo "\`\`\`"
+            echo "${SCRIPT_OUTPUT:-No error details available}"
+            echo "\`\`\`"
+          } >> $GITHUB_STEP_SUMMARY
+          
         else
-          echo "### ℹ️ No Updates Required" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "No monitor folders with JSON changes were found that required elastic-agent.yml updates." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### ℹ️ No Updates Required"
+            echo ""
+            echo "No monitor folders with JSON changes were found that required elastic-agent.yml updates."
+          } >> $GITHUB_STEP_SUMMARY
         fi
