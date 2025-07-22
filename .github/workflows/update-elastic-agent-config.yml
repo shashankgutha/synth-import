@@ -71,14 +71,17 @@ jobs:
         echo "Workflow run event: ${{ github.event.workflow_run.event }}"
         
         # For workflow_run events, get changed files from the triggering push
-        changed_files=$(git diff --name-only HEAD~1..HEAD | grep -E '^monitors/.*\.json$' || true)
+        changed_files=$(git diff --name-only HEAD~1..HEAD | grep -E '^monitors/.*/.*\.json$' || true)
         echo "Workflow run changed JSON files: $changed_files"
         
         if [ -n "$changed_files" ]; then
-          # Extract unique folder names
+          # Extract unique space_id/location combinations
           changed_folders=""
           for file in $changed_files; do
-            folder=$(echo $file | cut -d'/' -f2)
+            # Extract space_id and location from monitors/space_id/location/file.json
+            space_id=$(echo $file | cut -d'/' -f2)
+            location=$(echo $file | cut -d'/' -f3)
+            folder="$space_id/$location"
             if [[ ! $changed_folders =~ $folder ]]; then
               changed_folders="$changed_folders $folder"
             fi
@@ -119,7 +122,7 @@ jobs:
         git checkout -b "$BRANCH_NAME"
         
         # Add and commit changes
-        git add monitors/*/elastic-agent.yml
+        git add monitors/*/*/elastic-agent.yml
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else

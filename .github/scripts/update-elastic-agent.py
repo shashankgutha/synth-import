@@ -22,6 +22,7 @@ class ElasticAgentUpdater:
 
     def extract_agent_policy_id(self, folder_name):
         """Extract agentPolicyId from first JSON file in folder"""
+        # folder_name is now in format "spaceid/location"
         folder_path = Path('monitors') / folder_name
         
         if not folder_path.exists():
@@ -88,6 +89,7 @@ class ElasticAgentUpdater:
 
     def update_elastic_agent_file(self, folder_name, config_content):
         """Update elastic-agent.yml file in specified folder"""
+        # folder_name is now in format "spaceid/location"
         file_path = Path('monitors') / folder_name / 'elastic-agent.yml'
         
         try:
