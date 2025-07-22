@@ -10,9 +10,10 @@ from pathlib import Path
 import re
 
 class SyntheticsExporter:
-    def __init__(self, kibana_url, api_key):
+    def __init__(self, kibana_url, api_key, spaces=None):
         self.kibana_url = kibana_url.rstrip('/')  # Remove trailing slash
         self.output_dir = Path('monitors')
+        self.spaces = spaces or ['default']  # Default to 'default' space if none provided
         self.session = requests.Session()
         self.session.headers.update({
             'Authorization': f'ApiKey {api_key}',
@@ -33,24 +34,26 @@ class SyntheticsExporter:
         except json.JSONDecodeError as e:
             raise Exception(f"Failed to parse JSON response: {str(e)}")
 
-    def get_all_monitors(self):
-        """Fetch all synthetic monitors with pagination"""
-        print("Fetching all synthetic monitors...")
+    def get_all_monitors(self, space_id='default'):
+        """Fetch all synthetic monitors with pagination for a specific space"""
+        print(f"Fetching all synthetic monitors from space: {space_id}")
         
         all_monitors = []
         page = 1
         total_monitors = 0
         
         while True:
-            response = self.make_request(f"/api/synthetics/monitors?page={page}&perPage=50")
+            # Use space-specific endpoint
+            endpoint = f"/s/{space_id}/api/synthetics/monitors?page={page}&perPage=50"
+            response = self.make_request(endpoint)
             
             if page == 1:
                 total_monitors = response.get('total', 0)
-                print(f"Found {total_monitors} total monitors")
+                print(f"Found {total_monitors} total monitors in space '{space_id}'")
             
             monitors = response.get('monitors', [])
             all_monitors.extend(monitors)
-            print(f"Fetched page {page}, got {len(monitors)} monitors")
+            print(f"Fetched page {page}, got {len(monitors)} monitors from space '{space_id}'")
             
             if len(all_monitors) >= total_monitors:
                 break
@@ -79,12 +82,19 @@ class SyntheticsExporter:
         try:
             self.ensure_output_directory()
             
-            # Get all monitors
-            monitors = self.get_all_monitors()
+            all_exported_monitors = []
+            all_location_summary = {}
             
-            if not monitors:
-                print("No monitors found to export")
-                return
+            # Process each space
+            for space_id in self.spaces:
+                print(f"\n=== Processing space: {space_id} ===")
+                
+                # Get all monitors for this space
+                monitors = self.get_all_monitors(space_id)
+                
+                if not monitors:
+                    print(f"No monitors found in space '{space_id}'")
+                    continue
             
             # Export each monitor's detailed configuration
             exported_monitors = []
@@ -117,8 +127,9 @@ class SyntheticsExporter:
                         # Sanitize location label for folder name
                         location_folder = self.sanitize_filename(location_label.replace('/', '_').replace(' - ', '_'))
                         
-                        # Create location directory
-                        location_dir = self.output_dir / location_folder
+                        # Create space and location directory structure: monitors/{space_id}/{location}/
+                        space_dir = self.output_dir / space_id
+                        location_dir = space_dir / location_folder
                         location_dir.mkdir(parents=True, exist_ok=True)
                         
                         # Create monitor config specific to this location
@@ -135,7 +146,7 @@ class SyntheticsExporter:
                             'location_label': location_label,
                             'location_folder': location_folder,
                             'filename': base_filename,
-                            'file_path': f"{location_folder}/{base_filename}"
+                            'file_path': f"{space_id}/{location_folder}/{base_filename}"
                         })
                         
                         # Track location summary
@@ -151,7 +162,7 @@ class SyntheticsExporter:
                             'filename': base_filename
                         })
                         
-                        print(f"Exported: {monitor_name} -> {location_folder}/{base_filename}")
+                        print(f"Exported: {monitor_name} -> {space_id}/{location_folder}/{base_filename}")
                     
                     exported_monitors.append({
                         'config_id': config_id,
@@ -166,12 +177,22 @@ class SyntheticsExporter:
             
 
             
-            print(f"\nExport completed successfully!")
-            print(f"Total monitors: {len(monitors)}")
-            print(f"Successfully exported: {len(exported_monitors)}")
-            print(f"Total locations: {len(location_summary)}")
+                all_exported_monitors.extend(exported_monitors)
+                all_location_summary.update(location_summary)
+            
+            print(f"\n=== Export Summary ===")
+            print(f"Processed spaces: {', '.join(self.spaces)}")
+            print(f"Total monitors exported: {len(all_exported_monitors)}")
+            print(f"Total locations: {len(all_location_summary)}")
             print(f"Output directory: {self.output_dir}")
-            print(f"Location folders: {', '.join(location_summary.keys())}")
+            
+            # Show summary by space
+            for space_id in self.spaces:
+                space_locations = [loc for loc in all_location_summary.keys() if f"{space_id}/" in str(self.output_dir / space_id)]
+                if space_locations:
+                    print(f"Space '{space_id}': {len(space_locations)} locations")
+            
+            print(f"\nExport completed successfully!")
             
         except Exception as e:
             print(f"Export failed: {str(e)}")
@@ -181,6 +202,7 @@ def main():
     """Main execution function"""
     kibana_url = os.getenv('KIBANA_URL')
     api_key = os.getenv('KIBANA_API_KEY')
+    kibana_spaces = os.getenv('KIBANA_SPACES', 'default')
     
     if not all([kibana_url, api_key]):
         print("Missing required environment variables:")
@@ -188,7 +210,11 @@ def main():
         print("- KIBANA_API_KEY: Your Kibana API key")
         sys.exit(1)
     
-    exporter = SyntheticsExporter(kibana_url, api_key)
+    # Parse spaces (comma-separated list)
+    spaces = [space.strip() for space in kibana_spaces.split(',') if space.strip()]
+    print(f"Exporting monitors from spaces: {', '.join(spaces)}")
+    
+    exporter = SyntheticsExporter(kibana_url, api_key, spaces)
     exporter.export_monitors()
 
 if __name__ == "__main__":

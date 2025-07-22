@@ -5,6 +5,12 @@ on:
     # Run daily at 2 AM UTC
     #- cron: '0 2 * * *'
   workflow_dispatch:
+    inputs:
+      spaces:
+        description: 'Comma-separated list of Kibana spaces to export (e.g., default,production,staging)'
+        required: false
+        default: 'default'
+        type: string
     # Allow manual trigger
   workflow_run:
     workflows: ["Update Elastic Agent Config"]
@@ -68,7 +74,9 @@ jobs:
       env:
         KIBANA_URL: ${{ secrets.KIBANA_URL }}
         KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
+        KIBANA_SPACES: ${{ github.event.inputs.spaces || vars.KIBANA_SPACES || 'default' }}
       run: |
+        echo "Exporting monitors from spaces: $KIBANA_SPACES"
         python .github/scripts/export-synthetics-monitors.py
     
     - name: Check for changes
