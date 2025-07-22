@@ -84,26 +84,33 @@ class ElasticAgentUpdater:
             return f"'${{{secret_name}}}'"
         processed_content = re.sub(pattern2, replace2, processed_content)
         
-        # Pattern 3: Handle "K8SSEC_name" -> ${name} (double quotes) - MUST be after QK8SSEC_
-        pattern3 = r'"K8SSEC_([A-Za-z0-9_.-]+)"'
+        # Pattern 3: Handle QK8SSEC_name -> '${name}' (Q prefix unquoted) - MUST be before regular K8SSEC_
+        pattern3 = r'QK8SSEC_([A-Za-z0-9_.-]+)'
         def replace3(match):
             secret_name = match.group(1)
-            return f"${{{secret_name}}}"
+            return f"'${{{secret_name}}}'"
         processed_content = re.sub(pattern3, replace3, processed_content)
         
-        # Pattern 4: Handle 'K8SSEC_name' -> '${name}' (single quotes)
-        pattern4 = r"'K8SSEC_([A-Za-z0-9_.-]+)'"
+        # Pattern 4: Handle "K8SSEC_name" -> ${name} (double quotes) - MUST be after QK8SSEC_
+        pattern4 = r'"K8SSEC_([A-Za-z0-9_.-]+)"'
         def replace4(match):
             secret_name = match.group(1)
-            return f"'${{{secret_name}}}'"
+            return f"${{{secret_name}}}"
         processed_content = re.sub(pattern4, replace4, processed_content)
         
-        # Pattern 5: Handle K8SSEC_name -> ${name} (unquoted) - MUST be last to avoid conflicts
-        pattern5 = r'(?<!Q)K8SSEC_([A-Za-z0-9_.-]+)'
+        # Pattern 5: Handle 'K8SSEC_name' -> '${name}' (single quotes)
+        pattern5 = r"'K8SSEC_([A-Za-z0-9_.-]+)'"
         def replace5(match):
             secret_name = match.group(1)
-            return f"${{{secret_name}}}"
+            return f"'${{{secret_name}}}'"
         processed_content = re.sub(pattern5, replace5, processed_content)
+        
+        # Pattern 6: Handle K8SSEC_name -> ${name} (unquoted) - MUST be last to avoid conflicts
+        pattern6 = r'K8SSEC_([A-Za-z0-9_.-]+)'
+        def replace6(match):
+            secret_name = match.group(1)
+            return f"${{{secret_name}}}"
+        processed_content = re.sub(pattern6, replace6, processed_content)
         
         # Count replacements for logging - find all original K8SSEC_ references
         matches = re.findall(r"[Q]?K8SSEC_([A-Za-z0-9_.-]+)", config_content)
