@@ -51,8 +51,8 @@ class SyntheticsImporter:
     def get_existing_monitor(self, config_id):
         """Get existing monitor configuration if it exists"""
         try:
-            print(f"Checking if monitor exists: {config_id}")
-            response = self.make_request('GET', f"/api/synthetics/monitors/{config_id}")
+            print(f"Checking if monitor exists: {config_id} in space: {self.space_id}")
+            response = self.make_request('GET', f"/s/{self.space_id}/api/synthetics/monitors/{config_id}")
             
             if response and response.get('config_id') == config_id:
                 print(f"Monitor exists: {response.get('name', 'Unknown')} ({config_id})")
@@ -104,28 +104,33 @@ class SyntheticsImporter:
                 
                 file_path = Path(changed_file)
                 if file_path.exists() and file_path.suffix == '.json':
-                    # Extract location folder from path (monitors/location_folder/file.json)
-                    if len(file_path.parts) >= 3 and file_path.parts[0] == 'monitors':
-                        location_folder = file_path.parts[1]
+                    # Extract space_id and location folder from path (monitors/space_id/location_folder/file.json)
+                    if len(file_path.parts) >= 4 and file_path.parts[0] == 'monitors':
+                        space_id = file_path.parts[1]
+                        location_folder = file_path.parts[2]
                         monitor_files.append({
                             'file_path': file_path,
+                            'space_id': space_id,
                             'location_folder': location_folder,
                             'filename': file_path.name
                         })
                     else:
-                        print(f"  Warning: Skipping {changed_file} - invalid path structure")
+                        print(f"  Warning: Skipping {changed_file} - invalid path structure (expected monitors/space_id/location/file.json)")
                 else:
                     print(f"  Warning: Skipping {changed_file} - file not found or not JSON")
         else:
-            # Find all JSON files in location subdirectories (existing behavior)
-            for location_dir in self.monitors_dir.iterdir():
-                if location_dir.is_dir():
-                    for json_file in location_dir.glob('*.json'):
-                        monitor_files.append({
-                            'file_path': json_file,
-                            'location_folder': location_dir.name,
-                            'filename': json_file.name
-                        })
+            # Find all JSON files in space_id/location subdirectories (updated for new structure)
+            for space_dir in self.monitors_dir.iterdir():
+                if space_dir.is_dir():
+                    for location_dir in space_dir.iterdir():
+                        if location_dir.is_dir():
+                            for json_file in location_dir.glob('*.json'):
+                                monitor_files.append({
+                                    'file_path': json_file,
+                                    'space_id': space_dir.name,
+                                    'location_folder': location_dir.name,
+                                    'filename': json_file.name
+                                })
         
         print(f"Found {len(monitor_files)} monitor files to process")
         return monitor_files
@@ -217,12 +222,67 @@ class SyntheticsImporter:
         """Main import function"""
         try:
             # Find monitor files
-            monitor_files = self.find_monitor_files(changed_files_filter)
+            all_monitor_files = self.find_monitor_files(changed_files_filter)
             
-            if not monitor_files:
+            if not all_monitor_files:
                 print("No monitor files found to import")
                 return
             
+            # Group files by space ID
+            files_by_space = {}
+            for file_info in all_monitor_files:
+                # Determine space ID for this file
+                space_id = None
+                
+                # First try to get space_id from file path (new structure)
+                if 'space_id' in file_info:
+                    space_id = file_info['space_id']
+                else:
+                    # Fallback: check spaceId from JSON content
+                    try:
+                        config = self.load_monitor_config(file_info['file_path'])
+                        space_id = config.get('spaceId', 'default')
+                        file_info['space_id'] = space_id  # Add space_id to file_info
+                    except Exception as e:
+                        print(f"Warning: Could not read spaceId from {file_info['filename']}: {e}")
+                        space_id = 'default'
+                        file_info['space_id'] = space_id
+                
+                # Group by space ID
+                if space_id not in files_by_space:
+                    files_by_space[space_id] = []
+                files_by_space[space_id].append(file_info)
+            
+            print(f"Found files for {len(files_by_space)} space(s): {list(files_by_space.keys())}")
+            
+            # Process each space separately
+            all_results = {}
+            for space_id, monitor_files in files_by_space.items():
+                print(f"\n{'='*60}")
+                print(f"Processing space: {space_id}")
+                print(f"Files: {len(monitor_files)}")
+                print(f"{'='*60}")
+                
+                # Create a new importer instance for this space
+                space_importer = SyntheticsImporter(self.kibana_url.rstrip('/'),
+                                                  self.session.headers['Authorization'].replace('ApiKey ', ''),
+                                                  space_id)
+                
+                # Process monitors for this space
+                space_results = space_importer._process_space_monitors(monitor_files, dry_run, fresh_import)
+                all_results[space_id] = space_results
+            
+            # Print overall summary
+            self._print_overall_summary(all_results, dry_run, fresh_import)
+            return all_results
+            
+        except Exception as e:
+            print(f"Import failed: {str(e)}")
+            sys.exit(1)
+    
+    def _process_space_monitors(self, monitor_files, dry_run=False, fresh_import=False):
+        """Process monitors for a specific space"""
+        try:
             # Track import results
             results = {
                 'created': [],
@@ -490,8 +550,43 @@ class SyntheticsImporter:
             return results
             
         except Exception as e:
-            print(f"Import failed: {str(e)}")
-            sys.exit(1)
+            print(f"Processing space monitors failed: {str(e)}")
+            return {
+                'created': [],
+                'updated': [],
+                'failed': [{'error': str(e)}],
+                'skipped': []
+            }
+    
+    def _print_overall_summary(self, all_results, dry_run=False, fresh_import=False):
+        """Print overall summary for all spaces"""
+        mode_text = ""
+        if dry_run:
+            mode_text = "DRY RUN "
+        elif fresh_import:
+            mode_text = "FRESH IMPORT "
+        
+        print(f"\n{'='*80}")
+        print(f"{mode_text}OVERALL IMPORT SUMMARY")
+        print(f"{'='*80}")
+        
+        total_created = sum(len(results.get('created', [])) for results in all_results.values())
+        total_updated = sum(len(results.get('updated', [])) for results in all_results.values())
+        total_failed = sum(len(results.get('failed', [])) for results in all_results.values())
+        total_skipped = sum(len(results.get('skipped', [])) for results in all_results.values())
+        
+        print(f"Spaces processed: {len(all_results)}")
+        print(f"Total created: {total_created}")
+        print(f"Total updated: {total_updated}")
+        print(f"Total failed: {total_failed}")
+        print(f"Total skipped: {total_skipped}")
+        
+        for space_id, results in all_results.items():
+            print(f"\nSpace '{space_id}':")
+            print(f"  Created: {len(results.get('created', []))}")
+            print(f"  Updated: {len(results.get('updated', []))}")
+            print(f"  Failed: {len(results.get('failed', []))}")
+            print(f"  Skipped: {len(results.get('skipped', []))}")
 
 def main():
     """Main execution function"""

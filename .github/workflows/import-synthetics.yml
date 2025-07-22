@@ -28,7 +28,7 @@ on:
     branches:
       - main
     paths:
-      - 'monitors/**/*.json'
+      - 'monitors/*/*/*.json'
 
 jobs:
   import-monitors:
@@ -53,7 +53,7 @@ jobs:
     - name: Validate monitor files
       run: |
         echo "Validating monitor JSON files..."
-        find monitors -name "*.json" -type f | while read file; do
+        find monitors -path "monitors/*/*/*.json" -type f | while read file; do
           echo "Validating: $file"
           python -m json.tool "$file" > /dev/null || {
             echo "Invalid JSON in $file"
@@ -103,7 +103,7 @@ jobs:
       run: |
         echo "Detecting changed monitor files..."
         # Get changed files from the push event
-        changed_files=$(git diff --name-only ${{ github.event.before }}..${{ github.event.after }} | grep "monitors/.*\.json$" || true)
+        changed_files=$(git diff --name-only ${{ github.event.before }}..${{ github.event.after }} | grep "monitors/.*/.*\.json$" || true)
         
         if [ -z "$changed_files" ]; then
           echo "No monitor files changed"
@@ -120,7 +120,6 @@ jobs:
       env:
         KIBANA_URL: ${{ secrets.KIBANA_URL }}
         KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
-        KIBANA_SPACE_ID: 'default'
         DRY_RUN: 'false'
         CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
       run: |
@@ -171,4 +170,4 @@ jobs:
         echo "- Import Mode: Live" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Monitor Files Processed:**" >> $GITHUB_STEP_SUMMARY
-        find monitors -name "*.json" -type f | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+        find monitors -path "monitors/*/*/*.json" -type f | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
