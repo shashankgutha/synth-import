@@ -76,29 +76,36 @@ class ElasticAgentUpdater:
             return f"'${{{secret_name}}}'"
         processed_content = re.sub(pattern1, replace1, processed_content)
         
-        # Pattern 2: Handle 'K8SSEC_name' -> '${name}' (single quotes)
-        pattern2 = r"'K8SSEC_([A-Za-z0-9_.-]+)'"
+        # Pattern 2: Handle "QK8SSEC_name" -> '${name}' (Q prefix in double quotes)
+        pattern2 = r'"QK8SSEC_([A-Za-z0-9_.-]+)"'
         def replace2(match):
             secret_name = match.group(1)
             return f"'${{{secret_name}}}'"
         processed_content = re.sub(pattern2, replace2, processed_content)
         
-        # Pattern 3: Handle "K8SSEC_name" -> ${name} (double quotes)
-        pattern3 = r'"K8SSEC_([A-Za-z0-9_.-]+)"'
+        # Pattern 3: Handle 'K8SSEC_name' -> '${name}' (single quotes)
+        pattern3 = r"'K8SSEC_([A-Za-z0-9_.-]+)'"
         def replace3(match):
             secret_name = match.group(1)
-            return f"${{{secret_name}}}"
+            return f"'${{{secret_name}}}'"
         processed_content = re.sub(pattern3, replace3, processed_content)
         
-        # Pattern 4: Handle K8SSEC_name -> ${name} (unquoted)
-        pattern4 = r'K8SSEC_([A-Za-z0-9_.-]+)'
+        # Pattern 4: Handle "K8SSEC_name" -> ${name} (double quotes)
+        pattern4 = r'"K8SSEC_([A-Za-z0-9_.-]+)"'
         def replace4(match):
             secret_name = match.group(1)
             return f"${{{secret_name}}}"
         processed_content = re.sub(pattern4, replace4, processed_content)
         
+        # Pattern 5: Handle K8SSEC_name -> ${name} (unquoted)
+        pattern5 = r'K8SSEC_([A-Za-z0-9_.-]+)'
+        def replace5(match):
+            secret_name = match.group(1)
+            return f"${{{secret_name}}}"
+        processed_content = re.sub(pattern5, replace5, processed_content)
+        
         # Count replacements for logging - find all original K8SSEC_ references
-        matches = re.findall(r"K8SSEC_([A-Za-z0-9_.-]+)", config_content)
+        matches = re.findall(r"[Q]?K8SSEC_([A-Za-z0-9_.-]+)", config_content)
         if matches:
             print(f"Converted {len(matches)} K8SSEC_ references to Kubernetes secrets:")
             for match in matches:
