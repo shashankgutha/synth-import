@@ -74,24 +74,31 @@ class ElasticAgentUpdater:
         # Matches: K8SSEC_any-thing.here123 -> ${any-thing.here123}
         
         def replace_handler(match):
-            # Get the secret name from whichever group matched
-            secret_name = match.group(1) or match.group(2) or match.group(3)
             full_match = match.group(0)
             
-            # Preserve outer single quotes if present
-            if full_match.startswith("'") and full_match.endswith("'"):
+            # Extract secret name based on the match type
+            if full_match.startswith("'K8SSEC_") and full_match.endswith("'"):
+                # Single quoted: 'K8SSEC_name' -> '${name}'
+                secret_name = full_match[8:-1]  # Remove 'K8SSEC_ and '
                 return f"'${{{secret_name}}}'"
+            elif full_match.startswith('"K8SSEC_') and full_match.endswith('"'):
+                # Double quoted: "K8SSEC_name" -> ${name}
+                secret_name = full_match[8:-1]  # Remove "K8SSEC_ and "
+                return f"${{{secret_name}}}"
             else:
+                # Unquoted: K8SSEC_name -> ${name}
+                secret_name = full_match[7:]  # Remove K8SSEC_
                 return f"${{{secret_name}}}"
         
-        # Pattern captures different quote scenarios
-        pattern = r"(?:'K8SSEC_([^'\"\\s]+)'|\"K8SSEC_([^'\"\\s]+)\"|K8SSEC_([^'\"\\s]+))"
+        # Pattern to match all K8SSEC_ variations
+        # Matches quoted and unquoted versions
+        pattern = r"'K8SSEC_[^']+?'|\"K8SSEC_[^\"]+?\"|K8SSEC_[A-Za-z0-9_.-]+"
         
         # Replace all K8SSEC_ patterns with ${} format
         processed_content = re.sub(pattern, replace_handler, config_content)
         
-        # Count replacements for logging
-        matches = re.findall(r"K8SSEC_([^'\"\\s]+)", config_content)
+        # Count replacements for logging - find all K8SSEC_ references
+        matches = re.findall(r"K8SSEC_([A-Za-z0-9_.-]+)", config_content)
         if matches:
             print(f"Converted {len(matches)} K8SSEC_ references to Kubernetes secrets:")
             for match in matches:
