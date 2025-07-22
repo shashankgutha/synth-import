@@ -234,6 +234,9 @@ class SyntheticsImporter:
             # Process each monitor file
             processed_configs = {}  # Track by config_id to merge locations
             
+            # Separate new monitors (no config_id) from existing monitors
+            new_monitors = []  # Monitors without config_id
+            
             # First pass: collect all monitor configs and merge locations
             for file_info in monitor_files:
                 try:
@@ -242,10 +245,11 @@ class SyntheticsImporter:
                     monitor_name = config.get('name', 'Unknown')
                     
                     if not config_id:
-                        print(f"Skipping {file_info['filename']} - no config_id found")
-                        results['skipped'].append({
-                            'file': str(file_info['file_path']),
-                            'reason': 'No config_id'
+                        # No config_id = new monitor, treat separately
+                        print(f"No config_id found for {monitor_name} - treating as new monitor")
+                        new_monitors.append({
+                            'config': config,
+                            'file_info': file_info
                         })
                         continue
                     
@@ -279,7 +283,52 @@ class SyntheticsImporter:
                         'error': str(e)
                     })
             
-            # Second pass: process each unique monitor with all its locations
+            # Second pass: process new monitors (no config_id)
+            print(f"\n=== Processing {len(new_monitors)} new monitors (no config_id) ===")
+            for new_monitor in new_monitors:
+                try:
+                    config = new_monitor['config']
+                    file_info = new_monitor['file_info']
+                    monitor_name = config.get('name', 'Unknown')
+                    locations = config.get('locations', [])
+                    
+                    print(f"\nCreating new monitor: {monitor_name}")
+                    print(f"File: {file_info['filename']}")
+                    print(f"Locations: {len(locations)}")
+                    
+                    if dry_run:
+                        print(f"[DRY RUN] Would create new monitor: {monitor_name} with {len(locations)} locations")
+                        results['created'].append({
+                            'name': monitor_name, 
+                            'config_id': 'new',
+                            'file': str(file_info['file_path'])
+                        })
+                    else:
+                        create_response = self.create_monitor(config)
+                        if create_response:
+                            new_config_id = create_response.get('config_id', 'generated')
+                            print(f"✅ Successfully created new monitor with config_id: {new_config_id}")
+                            results['created'].append({
+                                'name': monitor_name,
+                                'config_id': new_config_id,
+                                'file': str(file_info['file_path'])
+                            })
+                        else:
+                            print(f"❌ Failed to create new monitor: {monitor_name}")
+                            results['failed'].append({
+                                'file': str(file_info['file_path']),
+                                'error': 'Failed to create new monitor'
+                            })
+                
+                except Exception as e:
+                    print(f"❌ Error creating new monitor from {file_info['filename']}: {str(e)}")
+                    results['failed'].append({
+                        'file': str(file_info['file_path']),
+                        'error': str(e)
+                    })
+            
+            # Third pass: process each unique monitor with all its locations (existing monitors)
+            print(f"\n=== Processing {len(processed_configs)} existing monitors (with config_id) ===")
             for config_id, monitor_data in processed_configs.items():
                 try:
                     config = monitor_data['config']
@@ -406,6 +455,9 @@ class SyntheticsImporter:
             
             print(f"\n{mode_text}Import Summary:")
             print(f"{'=' * 50}")
+            print(f"Total files processed: {len(monitor_files)}")
+            print(f"New monitors (no config_id): {len(new_monitors)}")
+            print(f"Existing monitors (with config_id): {len(processed_configs)}")
             print(f"Created: {len(results['created'])}")
             print(f"Updated: {len(results['updated'])}")
             print(f"Failed: {len(results['failed'])}")
@@ -414,7 +466,11 @@ class SyntheticsImporter:
             if results['created']:
                 print(f"\nCreated monitors:")
                 for item in results['created']:
-                    print(f"   - {item['name']} ({item.get('config_id', 'N/A')})")
+                    config_id_display = item.get('config_id', 'N/A')
+                    if config_id_display == 'new':
+                        config_id_display = 'new monitor'
+                    file_info = f" - {Path(item['file']).name}" if 'file' in item else ""
+                    print(f"   - {item['name']} ({config_id_display}){file_info}")
             
             if results['updated']:
                 print(f"\nUpdated monitors:")
