@@ -101,76 +101,76 @@ class SyntheticsExporter:
                 location_summary = {}
                 
                 for monitor in monitors:
-                try:
-                    config_id = monitor.get('config_id')
-                    monitor_name = monitor.get('name', config_id)
-                    
-                    detailed_config = self.get_monitor_config(config_id, space_id)
-                    
-                    # Get locations from the detailed config
-                    locations = detailed_config.get('locations', [])
-                    
-                    if not locations:
-                        print(f"⚠️  Monitor '{monitor_name}' has no locations, skipping location-based export")
-                        continue
-                    
-                    # Create filename from monitor name or config_id
-                    base_filename = f"{self.sanitize_filename(monitor_name)}.json"
-                    
-                    monitor_locations = []
-                    
-                    # Export monitor to each location folder
-                    for location in locations:
-                        location_label = location.get('label', 'unknown-location')
-                        location_id = location.get('id', 'unknown-id')
+                    try:
+                        config_id = monitor.get('config_id')
+                        monitor_name = monitor.get('name', config_id)
                         
-                        # Sanitize location label for folder name
-                        location_folder = self.sanitize_filename(location_label.replace('/', '_').replace(' - ', '_'))
+                        detailed_config = self.get_monitor_config(config_id, space_id)
                         
-                        # Create space and location directory structure: monitors/{space_id}/{location}/
-                        space_dir = self.output_dir / space_id
-                        location_dir = space_dir / location_folder
-                        location_dir.mkdir(parents=True, exist_ok=True)
+                        # Get locations from the detailed config
+                        locations = detailed_config.get('locations', [])
                         
-                        # Create monitor config specific to this location
-                        location_specific_config = detailed_config.copy()
-                        location_specific_config['locations'] = [location]  # Only this location
+                        if not locations:
+                            print(f"⚠️  Monitor '{monitor_name}' has no locations, skipping location-based export")
+                            continue
                         
-                        # Write monitor configuration to location folder
-                        location_file_path = location_dir / base_filename
-                        with open(location_file_path, 'w', encoding='utf-8') as f:
-                            json.dump(location_specific_config, f, indent=2, ensure_ascii=False)
+                        # Create filename from monitor name or config_id
+                        base_filename = f"{self.sanitize_filename(monitor_name)}.json"
                         
-                        monitor_locations.append({
-                            'location_id': location_id,
-                            'location_label': location_label,
-                            'location_folder': location_folder,
-                            'filename': base_filename,
-                            'file_path': f"{space_id}/{location_folder}/{base_filename}"
-                        })
-                        
-                        # Track location summary
-                        if location_folder not in location_summary:
-                            location_summary[location_folder] = {
-                                'location_label': location_label,
+                        monitor_locations = []
+                    
+                        # Export monitor to each location folder
+                        for location in locations:
+                            location_label = location.get('label', 'unknown-location')
+                            location_id = location.get('id', 'unknown-id')
+                            
+                            # Sanitize location label for folder name
+                            location_folder = self.sanitize_filename(location_label.replace('/', '_').replace(' - ', '_'))
+                            
+                            # Create space and location directory structure: monitors/{space_id}/{location}/
+                            space_dir = self.output_dir / space_id
+                            location_dir = space_dir / location_folder
+                            location_dir.mkdir(parents=True, exist_ok=True)
+                            
+                            # Create monitor config specific to this location
+                            location_specific_config = detailed_config.copy()
+                            location_specific_config['locations'] = [location]  # Only this location
+                            
+                            # Write monitor configuration to location folder
+                            location_file_path = location_dir / base_filename
+                            with open(location_file_path, 'w', encoding='utf-8') as f:
+                                json.dump(location_specific_config, f, indent=2, ensure_ascii=False)
+                            
+                            monitor_locations.append({
                                 'location_id': location_id,
-                                'monitors': []
-                            }
-                        location_summary[location_folder]['monitors'].append({
-                            'name': monitor_name,
-                            'config_id': config_id,
-                            'filename': base_filename
-                        })
+                                'location_label': location_label,
+                                'location_folder': location_folder,
+                                'filename': base_filename,
+                                'file_path': f"{space_id}/{location_folder}/{base_filename}"
+                            })
+                            
+                            # Track location summary
+                            if location_folder not in location_summary:
+                                location_summary[location_folder] = {
+                                    'location_label': location_label,
+                                    'location_id': location_id,
+                                    'monitors': []
+                                }
+                            location_summary[location_folder]['monitors'].append({
+                                'name': monitor_name,
+                                'config_id': config_id,
+                                'filename': base_filename
+                            })
+                            
+                            print(f"Exported: {monitor_name} -> {space_id}/{location_folder}/{base_filename}")
                         
-                        print(f"Exported: {monitor_name} -> {space_id}/{location_folder}/{base_filename}")
-                    
-                    exported_monitors.append({
-                        'config_id': config_id,
-                        'name': monitor_name,
-                        'filename': base_filename,
-                        'total_locations': len(locations),
-                        'locations': monitor_locations
-                    })
+                        exported_monitors.append({
+                            'config_id': config_id,
+                            'name': monitor_name,
+                            'filename': base_filename,
+                            'total_locations': len(locations),
+                            'locations': monitor_locations
+                        })
                     
                 except Exception as e:
                     print(f"Failed to export monitor {monitor.get('config_id', 'unknown')}: {str(e)}")
