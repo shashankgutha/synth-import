@@ -1,6 +1,6 @@
 {
   "type": "browser",
-  "enabled": true,
+  "enabled": false,
   "alert": {
     "status": {
       "enabled": true
