@@ -76,8 +76,12 @@ class ElasticAgentUpdater:
         def replace_handler(match):
             full_match = match.group(0)
             
-            # Extract secret name based on the match type
-            if full_match.startswith("'K8SSEC_") and full_match.endswith("'"):
+            # Handle nested quotes case: "'K8SSEC_name'" -> '${name}'
+            if full_match.startswith('"\'K8SSEC_') and full_match.endswith('\'"'):
+                # Double quotes containing single quotes: "'K8SSEC_name'" -> '${name}'
+                secret_name = full_match[9:-2]  # Remove "'K8SSEC_ and '"
+                return f"'${{{secret_name}}}'"
+            elif full_match.startswith("'K8SSEC_") and full_match.endswith("'"):
                 # Single quoted: 'K8SSEC_name' -> '${name}'
                 secret_name = full_match[8:-1]  # Remove 'K8SSEC_ and '
                 return f"'${{{secret_name}}}'"
@@ -90,9 +94,9 @@ class ElasticAgentUpdater:
                 secret_name = full_match[7:]  # Remove K8SSEC_
                 return f"${{{secret_name}}}"
         
-        # Pattern to match all K8SSEC_ variations
-        # Matches quoted and unquoted versions
-        pattern = r"'K8SSEC_[^']+?'|\"K8SSEC_[^\"]+?\"|K8SSEC_[A-Za-z0-9_.-]+"
+        # Pattern to match all K8SSEC_ variations including nested quotes
+        # Order matters: more specific patterns first
+        pattern = r"\"'K8SSEC_[^']+?'\"|'K8SSEC_[^']+?'|\"K8SSEC_[^\"]+?\"|K8SSEC_[A-Za-z0-9_.-]+"
         
         # Replace all K8SSEC_ patterns with ${} format
         processed_content = re.sub(pattern, replace_handler, config_content)
