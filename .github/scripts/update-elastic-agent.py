@@ -66,23 +66,32 @@ class ElasticAgentUpdater:
         """Process K8SSEC_ prefixed values and convert to Kubernetes ${} format"""
         import re
         
-        # Pattern to match K8SSEC_ prefixed values (captures anything after K8SSEC_)
-        # Matches: K8SSEC_ES_USERNAME -> ES_USERNAME
+        # Pattern to match K8SSEC_ prefixed values with different quote scenarios
+        # Matches: K8SSEC_ES_USERNAME -> ${ES_USERNAME}
         # Matches: "K8SSEC_ES_USERNAME" -> ${ES_USERNAME}
-        # Matches: K8SSEC_env.CLIENT_SEC -> env.CLIENT_SEC
-        # Matches: "'K8SSEC_env.CLIENT_SEC'" -> ${env.CLIENT_SEC}
-        # Matches: K8SSEC_any-thing.here123 -> any-thing.here123
-        pattern = r'''['"]*K8SSEC_([^'"\\s]+)['"]*'''
+        # Matches: K8SSEC_env.CLIENT_SEC -> ${env.CLIENT_SEC}
+        # Matches: "'K8SSEC_env.CLIENT_SEC'" -> '${env.CLIENT_SEC}'
+        # Matches: K8SSEC_any-thing.here123 -> ${any-thing.here123}
         
-        def replace_k8s_secret(match):
-            secret_name = match.group(1)  # Extract the part after K8SSEC_
-            return f"${{{secret_name}}}"
+        def replace_handler(match):
+            # Get the secret name from whichever group matched
+            secret_name = match.group(1) or match.group(2) or match.group(3)
+            full_match = match.group(0)
+            
+            # Preserve outer single quotes if present
+            if full_match.startswith("'") and full_match.endswith("'"):
+                return f"'${{{secret_name}}}'"
+            else:
+                return f"${{{secret_name}}}"
+        
+        # Pattern captures different quote scenarios
+        pattern = r"(?:'K8SSEC_([^'\"\\s]+)'|\"K8SSEC_([^'\"\\s]+)\"|K8SSEC_([^'\"\\s]+))"
         
         # Replace all K8SSEC_ patterns with ${} format
-        processed_content = re.sub(pattern, replace_k8s_secret, config_content)
+        processed_content = re.sub(pattern, replace_handler, config_content)
         
         # Count replacements for logging
-        matches = re.findall(r'K8SSEC_([^'"\\s]+)', config_content)
+        matches = re.findall(r"K8SSEC_([^'\"\\s]+)", config_content)
         if matches:
             print(f"Converted {len(matches)} K8SSEC_ references to Kubernetes secrets:")
             for match in matches:
