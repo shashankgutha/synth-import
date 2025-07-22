@@ -66,42 +66,38 @@ class ElasticAgentUpdater:
         """Process K8SSEC_ prefixed values and convert to Kubernetes ${} format"""
         import re
         
-        # Pattern to match K8SSEC_ prefixed values with different quote scenarios
-        # Matches: K8SSEC_ES_USERNAME -> ${ES_USERNAME}
-        # Matches: "K8SSEC_ES_USERNAME" -> ${ES_USERNAME}
-        # Matches: K8SSEC_env.CLIENT_SEC -> ${env.CLIENT_SEC}
-        # Matches: "'K8SSEC_env.CLIENT_SEC'" -> '${env.CLIENT_SEC}'
-        # Matches: K8SSEC_any-thing.here123 -> ${any-thing.here123}
+        # Process each pattern separately to avoid conflicts
+        processed_content = config_content
         
-        def replace_handler(match):
-            full_match = match.group(0)
-            
-            # Handle nested quotes case: "'K8SSEC_name'" -> '${name}'
-            if full_match.startswith('"\'K8SSEC_') and full_match.endswith('\'"'):
-                # Double quotes containing single quotes: "'K8SSEC_name'" -> '${name}'
-                secret_name = full_match[9:-2]  # Remove "'K8SSEC_ and '"
-                return f"'${{{secret_name}}}'"
-            elif full_match.startswith("'K8SSEC_") and full_match.endswith("'"):
-                # Single quoted: 'K8SSEC_name' -> '${name}'
-                secret_name = full_match[8:-1]  # Remove 'K8SSEC_ and '
-                return f"'${{{secret_name}}}'"
-            elif full_match.startswith('"K8SSEC_') and full_match.endswith('"'):
-                # Double quoted: "K8SSEC_name" -> ${name}
-                secret_name = full_match[8:-1]  # Remove "K8SSEC_ and "
-                return f"${{{secret_name}}}"
-            else:
-                # Unquoted: K8SSEC_name -> ${name}
-                secret_name = full_match[7:]  # Remove K8SSEC_
-                return f"${{{secret_name}}}"
+        # Pattern 1: Handle "'K8SSEC_name'" -> '${name}' (nested quotes)
+        pattern1 = r'"\'K8SSEC_([A-Za-z0-9_.-]+)\'"'
+        def replace1(match):
+            secret_name = match.group(1)
+            return f"'${{{secret_name}}}'"
+        processed_content = re.sub(pattern1, replace1, processed_content)
         
-        # Pattern to match all K8SSEC_ variations including nested quotes
-        # Order matters: more specific patterns first
-        pattern = r"\"'K8SSEC_[^']+?'\"|'K8SSEC_[^']+?'|\"K8SSEC_[^\"]+?\"|K8SSEC_[A-Za-z0-9_.-]+"
+        # Pattern 2: Handle 'K8SSEC_name' -> '${name}' (single quotes)
+        pattern2 = r"'K8SSEC_([A-Za-z0-9_.-]+)'"
+        def replace2(match):
+            secret_name = match.group(1)
+            return f"'${{{secret_name}}}'"
+        processed_content = re.sub(pattern2, replace2, processed_content)
         
-        # Replace all K8SSEC_ patterns with ${} format
-        processed_content = re.sub(pattern, replace_handler, config_content)
+        # Pattern 3: Handle "K8SSEC_name" -> ${name} (double quotes)
+        pattern3 = r'"K8SSEC_([A-Za-z0-9_.-]+)"'
+        def replace3(match):
+            secret_name = match.group(1)
+            return f"${{{secret_name}}}"
+        processed_content = re.sub(pattern3, replace3, processed_content)
         
-        # Count replacements for logging - find all K8SSEC_ references
+        # Pattern 4: Handle K8SSEC_name -> ${name} (unquoted)
+        pattern4 = r'K8SSEC_([A-Za-z0-9_.-]+)'
+        def replace4(match):
+            secret_name = match.group(1)
+            return f"${{{secret_name}}}"
+        processed_content = re.sub(pattern4, replace4, processed_content)
+        
+        # Count replacements for logging - find all original K8SSEC_ references
         matches = re.findall(r"K8SSEC_([A-Za-z0-9_.-]+)", config_content)
         if matches:
             print(f"Converted {len(matches)} K8SSEC_ references to Kubernetes secrets:")
