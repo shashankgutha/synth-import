@@ -95,12 +95,12 @@ class SyntheticsExporter:
                 if not monitors:
                     print(f"No monitors found in space '{space_id}'")
                     continue
-            
-            # Export each monitor's detailed configuration
-            exported_monitors = []
-            location_summary = {}
-            
-            for monitor in monitors:
+                
+                # Export each monitor's detailed configuration
+                exported_monitors = []
+                location_summary = {}
+                
+                for monitor in monitors:
                 try:
                     config_id = monitor.get('config_id')
                     monitor_name = monitor.get('name', config_id)
@@ -174,9 +174,8 @@ class SyntheticsExporter:
                     
                 except Exception as e:
                     print(f"Failed to export monitor {monitor.get('config_id', 'unknown')}: {str(e)}")
-            
-
-            
+                
+                # Add this space's results to the overall summary
                 all_exported_monitors.extend(exported_monitors)
                 all_location_summary.update(location_summary)
             
