@@ -31,7 +31,7 @@
   "origin": "ui",
   "id": "1f01f76a-b118-4328-8e82-4997a347ad35",
   "max_attempts": 2,
-  "revision": 3,
+  "revision": 4,
   "__ui": {
     "is_tls_enabled": true,
     "script_source": {
@@ -57,7 +57,7 @@
     "TLSv1.3"
   ],
   "created_at": "2025-07-21T15:58:16.404Z",
-  "updated_at": "2025-07-22T03:47:46.702Z",
+  "updated_at": "2025-07-22T07:20:47.872Z",
   "inline_script": "step('Go to https://www.google.com', async () => {\n  await page.goto('https://www.google.com');\n});",
   "retest_on_failure": true,
   "spaceId": "default"
