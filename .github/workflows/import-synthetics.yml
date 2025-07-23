@@ -28,7 +28,7 @@ on:
     branches:
       - main
     paths:
-      - 'monitors/*/*/*.json'
+      - 'monitors/**/*.json'
 
 permissions:
   contents: write
@@ -103,12 +103,20 @@ jobs:
         python .github/scripts/import-synthetics-monitors.py --fresh-import
     
     - name: Get changed monitor files
-      if: github.event_name == 'push'
+      if: github.event_name == 'push' || github.event_name == 'pull_request'
       id: changed-files
       run: |
         echo "Detecting changed monitor files..."
-        # Get changed files from the push event, excluding deleted files
-        all_changed_files=$(git diff --name-only ${{ github.event.before }}..${{ github.event.after }} | grep "monitors/.*/.*\.json$" || true)
+        # Get changed files from push or pull request event, excluding deleted files
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          # For pull requests, compare against the base branch
+          all_changed_files=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep "monitors/.*/.*\.json$" || true)
+          echo "Pull request detected - comparing against base branch: ${{ github.event.pull_request.base.ref }}"
+        else
+          # For push events, use the before/after commits
+          all_changed_files=$(git diff --name-only ${{ github.event.before }}..${{ github.event.after }} | grep "monitors/.*/.*\.json$" || true)
+          echo "Push event detected - comparing commits"
+        fi
         
         # Filter out deleted files - only keep files that actually exist
         changed_files=""
@@ -148,14 +156,18 @@ jobs:
         fi
     
     - name: Import Changed Monitors (Auto)
-      if: github.event_name == 'push' && steps.changed-files.outputs.changed_files != ''
+      if: (github.event_name == 'push' || github.event_name == 'pull_request') && steps.changed-files.outputs.changed_files != ''
       env:
         KIBANA_URL: ${{ secrets.KIBANA_URL }}
         KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
-        DRY_RUN: 'false'
+        DRY_RUN: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
         CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
       run: |
-        echo "Running import for changed monitors only..."
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "Running import in DRY RUN mode for pull request validation..."
+        else
+          echo "Running import for changed monitors only..."
+        fi
         echo "Changed files: $CHANGED_FILES"
         python .github/scripts/import-synthetics-monitors.py --changed-files
     
@@ -165,7 +177,7 @@ jobs:
         # Create a file to indicate the import mode for the export workflow
         # Set LIVE_IMPORT=true for operations that should trigger export
         # Fresh import should NOT trigger export to preserve original Git files
-        if [ "${{ github.event_name }}" = "push" ] || ([ "${{ github.event.inputs.dry_run }}" = "false" ] && [ "${{ github.event.inputs.fresh_import }}" != "true" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]); then
+        if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "pull_request" ] || ([ "${{ github.event.inputs.dry_run }}" = "false" ] && [ "${{ github.event.inputs.fresh_import }}" != "true" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]); then
           echo "LIVE_IMPORT=true" >> $GITHUB_ENV
           echo "TRIGGER_EXPORT=true" >> $GITHUB_ENV
           IMPORT_MODE="live"
