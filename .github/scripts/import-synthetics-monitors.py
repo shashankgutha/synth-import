@@ -327,29 +327,32 @@ class SyntheticsImporter:
                         # Ensure directory exists
                         location_dir.mkdir(parents=True, exist_ok=True)
                         
-                        # Handle file renaming if original file exists and has different name
+                        # Handle the original changed file
                         renamed = False
                         if original_file:
                             original_path = Path(original_file)
-                            if (original_path.exists() and 
-                                original_path.parent == location_dir and 
-                                original_path.name != correct_filename):
-                                try:
-                                    # Remove old file if correct file already exists, otherwise rename
-                                    if correct_file_path.exists():
-                                        original_path.unlink()
-                                        print(f"🔄 Removed old file: {original_path.name}")
-                                    else:
-                                        original_path.rename(correct_file_path)
-                                        print(f"🔄 Renamed: {original_path.name} → {correct_filename}")
-                                    renamed = True
-                                    export_summary['renamed_files'].append({
-                                        'old_name': original_path.name,
-                                        'new_name': correct_filename,
-                                        'path': str(correct_file_path)
-                                    })
-                                except Exception as e:
-                                    print(f"⚠️  Failed to rename {original_path.name}: {str(e)}")
+                            # Check if this location matches the original file's location
+                            if original_path.exists() and original_path.parent == location_dir:
+                                # This is the file we need to update/rename
+                                if original_path.name != correct_filename:
+                                    # Need to rename
+                                    try:
+                                        if correct_file_path.exists():
+                                            # Remove the old file
+                                            original_path.unlink()
+                                            print(f"🔄 Removed old file: {original_path.name}")
+                                        else:
+                                            # Rename the file
+                                            original_path.rename(correct_file_path)
+                                            print(f"🔄 Renamed: {original_path.name} → {correct_filename}")
+                                        renamed = True
+                                        export_summary['renamed_files'].append({
+                                            'old_name': original_path.name,
+                                            'new_name': correct_filename,
+                                            'path': str(correct_file_path)
+                                        })
+                                    except Exception as e:
+                                        print(f"⚠️  Failed to rename {original_path.name}: {str(e)}")
                         
                         # Write the updated config with latest Kibana data
                         try:
@@ -359,8 +362,8 @@ class SyntheticsImporter:
                             print(f"✅ Exported: {monitor_name} → {space_id}/{location_folder}/{correct_filename}")
                             
                             if renamed:
-                                # File was renamed
-                                pass  # Already added to renamed_files
+                                # File was renamed - already tracked
+                                pass
                             else:
                                 # File was updated
                                 export_summary['updated_files'].append({
