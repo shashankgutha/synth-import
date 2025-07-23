@@ -30,6 +30,11 @@ on:
     paths:
       - 'monitors/*/*/*.json'
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
 jobs:
   import-monitors:
     runs-on: ubuntu-latest
