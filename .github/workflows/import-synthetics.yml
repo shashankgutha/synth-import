@@ -219,7 +219,17 @@ jobs:
         git config --local user.name "GitHub Action"
         git add monitors/
         git commit -m "update monitor files with latest Kibana config after import - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-        git push
+        
+        # Handle different push scenarios
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          # For pull requests, push to the PR branch
+          echo "Pushing changes to PR branch: ${{ github.event.pull_request.head.ref }}"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+        else
+          # For push events, push to the current branch
+          echo "Pushing changes to current branch"
+          git push
+        fi
     
     - name: Create deployment summary
       if: env.LIVE_IMPORT == 'true'
