@@ -70,6 +70,16 @@ class SyntheticsImporter:
                 print(f"Error checking monitor {config_id}: {str(e)}")
                 return None
 
+    def get_monitor_config(self, config_id):
+        """Fetch detailed configuration for a specific monitor (for export purposes)"""
+        try:
+            print(f"Fetching detailed config for monitor: {config_id} in space: {self.space_id}")
+            response = self.make_request('GET', f"/s/{self.space_id}/api/synthetics/monitors/{config_id}")
+            return response
+        except Exception as e:
+            print(f"Error fetching monitor config {config_id}: {str(e)}")
+            return None
+
     def merge_locations(self, existing_locations, new_locations):
         """Merge existing and new locations, avoiding duplicates"""
         merged_locations = existing_locations.copy()
@@ -218,6 +228,187 @@ class SyntheticsImporter:
         """Sanitize filename by replacing invalid characters"""
         return re.sub(r'[^a-zA-Z0-9.-]', '_', name)
 
+    def export_imported_monitors(self, import_results, dry_run=False):
+        """Export successfully imported monitors back to their files with latest Kibana config"""
+        if dry_run:
+            print("\n[DRY RUN] Skipping export of imported monitors")
+            return
+        
+        print(f"\n{'='*60}")
+        print("EXPORTING IMPORTED MONITORS BACK TO FILES")
+        print(f"{'='*60}")
+        
+        export_summary = {
+            'updated_files': [],
+            'renamed_files': [],
+            'failed_exports': []
+        }
+        
+        # Process each space's results
+        for space_id, results in import_results.items():
+            if not results:
+                continue
+                
+            print(f"\n=== Exporting monitors for space: {space_id} ===")
+            
+            # Combine created and updated monitors
+            all_successful_monitors = results.get('created', []) + results.get('updated', [])
+            
+            if not all_successful_monitors:
+                print(f"No successful imports to export for space '{space_id}'")
+                continue
+            
+            print(f"Found {len(all_successful_monitors)} monitors to export")
+            
+            # Create space-specific importer to use the correct space
+            space_importer = SyntheticsImporter(
+                self.kibana_url,
+                self.session.headers['Authorization'].replace('ApiKey ', ''),
+                space_id
+            )
+            
+            for monitor_info in all_successful_monitors:
+                try:
+                    config_id = monitor_info.get('config_id')
+                    monitor_name = monitor_info.get('name', 'Unknown')
+                    original_file = monitor_info.get('file')
+                    
+                    if not config_id or config_id == 'new':
+                        print(f"⚠️  Skipping export for {monitor_name} - no valid config_id")
+                        continue
+                    
+                    print(f"\nExporting monitor: {monitor_name} ({config_id})")
+                    
+                    # Fetch latest config from Kibana
+                    try:
+                        latest_config = space_importer.get_monitor_config(config_id)
+                        if not latest_config:
+                            print(f"❌ Failed to fetch config for {monitor_name}")
+                            export_summary['failed_exports'].append({
+                                'monitor': monitor_name,
+                                'config_id': config_id,
+                                'error': 'Failed to fetch config from Kibana'
+                            })
+                            continue
+                    except Exception as e:
+                        print(f"❌ Error fetching config for {monitor_name}: {str(e)}")
+                        export_summary['failed_exports'].append({
+                            'monitor': monitor_name,
+                            'config_id': config_id,
+                            'error': str(e)
+                        })
+                        continue
+                    
+                    # Get monitor locations
+                    locations = latest_config.get('locations', [])
+                    if not locations:
+                        print(f"⚠️  Monitor {monitor_name} has no locations, skipping export")
+                        continue
+                    
+                    # Determine the correct filename based on monitor name (same logic as export script)
+                    correct_filename = f"{self.sanitize_filename(monitor_name)}.json"
+                    
+                    # Export to each location where this monitor should exist
+                    for location in locations:
+                        location_label = location.get('label', 'unknown-location')
+                        location_id = location.get('id', 'unknown-id')
+                        
+                        # Sanitize location label for folder name (same logic as export script)
+                        location_folder = self.sanitize_filename(location_label.replace('/', '_').replace(' - ', '_'))
+                        
+                        # Determine file paths
+                        location_dir = self.monitors_dir / space_id / location_folder
+                        correct_file_path = location_dir / correct_filename
+                        
+                        # Create location-specific config (same logic as export script)
+                        location_specific_config = latest_config.copy()
+                        location_specific_config['locations'] = [location]  # Only this location
+                        
+                        # Check if we need to rename the file
+                        renamed = False
+                        if original_file:
+                            original_path = Path(original_file)
+                            if original_path.exists() and original_path.name != correct_filename:
+                                # File needs to be renamed
+                                try:
+                                    if correct_file_path.exists():
+                                        # Remove the old incorrectly named file
+                                        original_path.unlink()
+                                        print(f"🔄 Removed old file: {original_path}")
+                                    else:
+                                        # Rename the file
+                                        original_path.rename(correct_file_path)
+                                        print(f"🔄 Renamed: {original_path.name} → {correct_filename}")
+                                    renamed = True
+                                    export_summary['renamed_files'].append({
+                                        'old_name': original_path.name,
+                                        'new_name': correct_filename,
+                                        'path': str(correct_file_path)
+                                    })
+                                except Exception as e:
+                                    print(f"⚠️  Failed to rename {original_path.name}: {str(e)}")
+                        
+                        # Ensure directory exists
+                        location_dir.mkdir(parents=True, exist_ok=True)
+                        
+                        # Write the updated config
+                        try:
+                            with open(correct_file_path, 'w', encoding='utf-8') as f:
+                                json.dump(location_specific_config, f, indent=2, ensure_ascii=False)
+                            
+                            print(f"✅ Exported: {monitor_name} → {space_id}/{location_folder}/{correct_filename}")
+                            
+                            if not renamed:  # Only add to updated_files if it wasn't renamed
+                                export_summary['updated_files'].append({
+                                    'monitor': monitor_name,
+                                    'config_id': config_id,
+                                    'file_path': str(correct_file_path)
+                                })
+                        
+                        except Exception as e:
+                            print(f"❌ Failed to write file for {monitor_name} at {location_folder}: {str(e)}")
+                            export_summary['failed_exports'].append({
+                                'monitor': monitor_name,
+                                'config_id': config_id,
+                                'location': location_folder,
+                                'error': str(e)
+                            })
+                
+                except Exception as e:
+                    print(f"❌ Error processing monitor {monitor_info.get('name', 'Unknown')}: {str(e)}")
+                    export_summary['failed_exports'].append({
+                        'monitor': monitor_info.get('name', 'Unknown'),
+                        'config_id': monitor_info.get('config_id', 'Unknown'),
+                        'error': str(e)
+                    })
+        
+        # Print export summary
+        print(f"\n{'='*60}")
+        print("EXPORT SUMMARY")
+        print(f"{'='*60}")
+        print(f"Files updated: {len(export_summary['updated_files'])}")
+        print(f"Files renamed: {len(export_summary['renamed_files'])}")
+        print(f"Failed exports: {len(export_summary['failed_exports'])}")
+        
+        if export_summary['updated_files']:
+            print(f"\nUpdated files:")
+            for item in export_summary['updated_files']:
+                print(f"   - {item['monitor']} → {Path(item['file_path']).name}")
+        
+        if export_summary['renamed_files']:
+            print(f"\nRenamed files:")
+            for item in export_summary['renamed_files']:
+                print(f"   - {item['old_name']} → {item['new_name']}")
+        
+        if export_summary['failed_exports']:
+            print(f"\nFailed exports:")
+            for item in export_summary['failed_exports']:
+                location_info = f" ({item.get('location', '')})" if item.get('location') else ""
+                print(f"   - {item['monitor']}{location_info} - {item['error']}")
+        
+        print(f"\nExport completed!")
+        return export_summary
+
     def import_monitors(self, dry_run=False, changed_files_filter=None, fresh_import=False):
         """Main import function"""
         try:
@@ -274,6 +465,25 @@ class SyntheticsImporter:
             
             # Print overall summary
             self._print_overall_summary(all_results, dry_run, fresh_import)
+            
+            # Export imported monitors back to files with latest Kibana config
+            if not dry_run:
+                # Check if there were any successful imports
+                total_successful = sum(
+                    len(results.get('created', [])) + len(results.get('updated', []))
+                    for results in all_results.values()
+                )
+                
+                if total_successful > 0:
+                    print(f"\n🔄 Starting export of {total_successful} successfully imported monitors...")
+                    try:
+                        self.export_imported_monitors(all_results, dry_run)
+                    except Exception as e:
+                        print(f"⚠️  Export failed but import was successful: {str(e)}")
+                        # Don't fail the entire workflow if export fails
+                else:
+                    print(f"\n📝 No successful imports to export")
+            
             return all_results
             
         except Exception as e:

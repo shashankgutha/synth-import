@@ -158,6 +158,28 @@ jobs:
           echo "::notice title=Fresh Import Mode::This is a fresh import - export will be skipped"
         fi
     
+    - name: Check for exported file changes
+      if: env.LIVE_IMPORT == 'true'
+      id: export-check
+      run: |
+        git add monitors/
+        if git diff --staged --quiet; then
+          echo "export_changes=false" >> $GITHUB_OUTPUT
+          echo "No changes detected from export"
+        else
+          echo "export_changes=true" >> $GITHUB_OUTPUT
+          echo "Changes detected from export - files updated with latest Kibana config"
+        fi
+    
+    - name: Commit exported changes
+      if: env.LIVE_IMPORT == 'true' && steps.export-check.outputs.export_changes == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add monitors/
+        git commit -m "update monitor files with latest Kibana config after import - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        git push
+    
     - name: Create deployment summary
       if: env.LIVE_IMPORT == 'true'
       run: |
@@ -168,6 +190,7 @@ jobs:
         echo "- Triggered by: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
         echo "- Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
         echo "- Import Mode: Live" >> $GITHUB_STEP_SUMMARY
+        echo "- Export Changes: ${{ steps.export-check.outputs.export_changes || 'false' }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Monitor Files Processed:**" >> $GITHUB_STEP_SUMMARY
         find monitors -path "monitors/*/*/*.json" -type f | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
