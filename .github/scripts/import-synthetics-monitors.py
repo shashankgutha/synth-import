@@ -324,19 +324,22 @@ class SyntheticsImporter:
                         location_specific_config = latest_config.copy()
                         location_specific_config['locations'] = [location]  # Only this location
                         
-                        # Check if we need to rename the file
+                        # Ensure directory exists
+                        location_dir.mkdir(parents=True, exist_ok=True)
+                        
+                        # Handle file renaming if original file exists and has different name
                         renamed = False
                         if original_file:
                             original_path = Path(original_file)
-                            if original_path.exists() and original_path.name != correct_filename:
-                                # File needs to be renamed
+                            if (original_path.exists() and 
+                                original_path.parent == location_dir and 
+                                original_path.name != correct_filename):
                                 try:
+                                    # Remove old file if correct file already exists, otherwise rename
                                     if correct_file_path.exists():
-                                        # Remove the old incorrectly named file
                                         original_path.unlink()
-                                        print(f"🔄 Removed old file: {original_path}")
+                                        print(f"🔄 Removed old file: {original_path.name}")
                                     else:
-                                        # Rename the file
                                         original_path.rename(correct_file_path)
                                         print(f"🔄 Renamed: {original_path.name} → {correct_filename}")
                                     renamed = True
@@ -348,22 +351,32 @@ class SyntheticsImporter:
                                 except Exception as e:
                                     print(f"⚠️  Failed to rename {original_path.name}: {str(e)}")
                         
-                        # Ensure directory exists
-                        location_dir.mkdir(parents=True, exist_ok=True)
-                        
-                        # Write the updated config
+                        # Write the updated config with latest Kibana data
                         try:
                             with open(correct_file_path, 'w', encoding='utf-8') as f:
                                 json.dump(location_specific_config, f, indent=2, ensure_ascii=False)
                             
                             print(f"✅ Exported: {monitor_name} → {space_id}/{location_folder}/{correct_filename}")
                             
-                            if not renamed:  # Only add to updated_files if it wasn't renamed
+                            if renamed:
+                                # File was renamed
+                                pass  # Already added to renamed_files
+                            else:
+                                # File was updated
                                 export_summary['updated_files'].append({
                                     'monitor': monitor_name,
                                     'config_id': config_id,
                                     'file_path': str(correct_file_path)
                                 })
+                        
+                        except Exception as e:
+                            print(f"❌ Failed to write file for {monitor_name} at {location_folder}: {str(e)}")
+                            export_summary['failed_exports'].append({
+                                'monitor': monitor_name,
+                                'config_id': config_id,
+                                'location': location_folder,
+                                'error': str(e)
+                            })
                         
                         except Exception as e:
                             print(f"❌ Failed to write file for {monitor_name} at {location_folder}: {str(e)}")
