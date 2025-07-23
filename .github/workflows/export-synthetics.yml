@@ -12,10 +12,10 @@ on:
         default: 'default'
         type: string
     # Allow manual trigger
-  workflow_run:
-    workflows: ["Update Elastic Agent Config"]
-    types:
-      - completed
+  #workflow_run:
+    #workflows: ["Update Elastic Agent Config"]
+    #types:
+      #- completed
 
 permissions:
   contents: write
