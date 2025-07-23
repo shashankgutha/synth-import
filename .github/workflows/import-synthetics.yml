@@ -139,7 +139,12 @@ jobs:
           echo ""
           echo "Final changed monitor files to process:"
           echo "$changed_files"
-          echo "changed_files=$changed_files" >> $GITHUB_OUTPUT
+          # Use heredoc format for multiline output to handle spaces and special characters
+          {
+            echo "changed_files<<EOF"
+            echo "$changed_files"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
         fi
     
     - name: Import Changed Monitors (Auto)

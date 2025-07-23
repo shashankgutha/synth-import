@@ -104,7 +104,7 @@ class SyntheticsImporter:
             return monitor_files
         
         if changed_files_filter:
-            # Process only specific changed files
+            # Process only specific changed files (newline-separated)
             changed_file_list = changed_files_filter.strip().split('\n')
             changed_file_list = [f.strip() for f in changed_file_list if f.strip()]
             
