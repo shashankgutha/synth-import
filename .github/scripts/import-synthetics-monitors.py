@@ -649,7 +649,11 @@ class SyntheticsImporter:
                         # Fresh import mode - skip existence check and create directly
                         if dry_run:
                             print(f"[DRY RUN] Would create (fresh): {monitor_name} with {len(new_locations)} locations")
-                            results['created'].append({'name': monitor_name, 'config_id': config_id})
+                            results['created'].append({
+                                'name': monitor_name, 
+                                'config_id': config_id,
+                                'file': str(monitor_data['files'][0]['file_path']) if monitor_data['files'] else None
+                            })
                             continue
                         
                         print(f"Fresh import - creating monitor without existence check...")
@@ -663,14 +667,16 @@ class SyntheticsImporter:
                                 'name': monitor_name,
                                 'config_id': created_config_id or config_id,
                                 'total_locations': len(new_locations),
-                                'operation': 'fresh_create'
+                                'operation': 'fresh_create',
+                                'file': str(monitor_data['files'][0]['file_path']) if monitor_data['files'] else None
                             })
                             print(f"Successfully created monitor (fresh import)")
                         else:
                             results['failed'].append({
                                 'name': monitor_name,
                                 'config_id': config_id,
-                                'operation': 'fresh_create'
+                                'operation': 'fresh_create',
+                                'file': str(monitor_data['files'][0]['file_path']) if monitor_data['files'] else None
                             })
                         continue
                     
@@ -682,10 +688,18 @@ class SyntheticsImporter:
                             existing_locations = existing_monitor.get('locations', [])
                             merged_locations = self.merge_locations(existing_locations, new_locations)
                             print(f"[DRY RUN] Would update: {monitor_name} with {len(merged_locations)} total locations")
-                            results['updated'].append({'name': monitor_name, 'config_id': config_id})
+                            results['updated'].append({
+                                'name': monitor_name, 
+                                'config_id': config_id,
+                                'file': str(monitor_data['files'][0]['file_path']) if monitor_data['files'] else None
+                            })
                         else:
                             print(f"[DRY RUN] Would create: {monitor_name} with {len(new_locations)} locations")
-                            results['created'].append({'name': monitor_name, 'config_id': config_id})
+                            results['created'].append({
+                                'name': monitor_name, 
+                                'config_id': config_id,
+                                'file': str(monitor_data['files'][0]['file_path']) if monitor_data['files'] else None
+                            })
                         continue
                     
                     # Perform actual create/update/restore workflow (normal mode)
@@ -710,14 +724,16 @@ class SyntheticsImporter:
                                 'name': monitor_name,
                                 'config_id': config_id,
                                 'total_locations': len(merged_locations),
-                                'operation': 'location_merge_update'
+                                'operation': 'location_merge_update',
+                                'file': str(monitor_data['files'][0]['file_path']) if monitor_data['files'] else None
                             })
                             print(f"Successfully updated monitor with merged locations")
                         else:
                             results['failed'].append({
                                 'name': monitor_name,
                                 'config_id': config_id,
-                                'operation': 'update_after_merge'
+                                'operation': 'update_after_merge',
+                                'file': str(monitor_data['files'][0]['file_path']) if monitor_data['files'] else None
                             })
                     else:
                         # Monitor doesn't exist - create workflow
@@ -735,14 +751,16 @@ class SyntheticsImporter:
                                 'name': monitor_name,
                                 'config_id': created_config_id or config_id,
                                 'total_locations': len(new_locations),
-                                'operation': 'create'
+                                'operation': 'create',
+                                'file': str(monitor_data['files'][0]['file_path']) if monitor_data['files'] else None
                             })
                             print(f"Successfully created monitor")
                         else:
                             results['failed'].append({
                                 'name': monitor_name,
                                 'config_id': config_id,
-                                'operation': 'create'
+                                'operation': 'create',
+                                'file': str(monitor_data['files'][0]['file_path']) if monitor_data['files'] else None
                             })
                 
                 except Exception as e:
