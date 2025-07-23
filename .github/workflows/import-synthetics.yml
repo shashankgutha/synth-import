@@ -160,14 +160,11 @@ jobs:
       env:
         KIBANA_URL: ${{ secrets.KIBANA_URL }}
         KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}
-        DRY_RUN: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+        DRY_RUN: 'false'
         CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
       run: |
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          echo "Running import in DRY RUN mode for pull request validation..."
-        else
-          echo "Running import for changed monitors only..."
-        fi
+        echo "Running import for changed monitors only..."
+        echo "Event: ${{ github.event_name }}"
         echo "Changed files: $CHANGED_FILES"
         python .github/scripts/import-synthetics-monitors.py --changed-files
     
