@@ -308,90 +308,87 @@ class SyntheticsImporter:
                 # Determine the correct filename based on monitor name (same logic as export script)
                 correct_filename = f"{self.sanitize_filename(monitor_name)}.json"
                 
-                # Process the original file
+                # Process the original file to get the original location info
                 original_path = Path(original_file_path)
-                if not original_path.exists():
-                    print(f"⚠️  Original file not found: {original_file_path}")
-                    continue
+                original_location_folder = None
                 
-                # Extract location info from original file path
-                # Path format: monitors/space_id/location_folder/filename.json
-                path_parts = original_path.parts
-                if len(path_parts) >= 4 and path_parts[0] == 'monitors':
-                    original_space_id = path_parts[1]
-                    original_location_folder = path_parts[2]
+                if original_path.exists():
+                    # Extract location info from original file path
+                    # Path format: monitors/space_id/location_folder/filename.json
+                    path_parts = original_path.parts
+                    if len(path_parts) >= 4 and path_parts[0] == 'monitors':
+                        original_location_folder = path_parts[2]
+                
+                # Export to ALL locations where this monitor exists (not just the original location)
+                for location in locations:
+                    location_label = location.get('label', 'unknown-location')
+                    location_id = location.get('id', 'unknown-id')
                     
-                    # Find the matching location in the monitor config
-                    matching_location = None
-                    for location in locations:
-                        location_label = location.get('label', 'unknown-location')
-                        location_folder = self.sanitize_filename(location_label.replace('/', '_').replace(' - ', '_'))
-                        if location_folder == original_location_folder:
-                            matching_location = location
-                            break
+                    # Sanitize location label for folder name (same logic as export script)
+                    location_folder = self.sanitize_filename(location_label.replace('/', '_').replace(' - ', '_'))
                     
-                    if matching_location:
-                        # Create location-specific config
-                        location_specific_config = latest_config.copy()
-                        location_specific_config['locations'] = [matching_location]
-                        
-                        # Determine correct file path
-                        location_dir = self.monitors_dir / space_id / original_location_folder
-                        correct_file_path = location_dir / correct_filename
-                        
-                        # Ensure directory exists
-                        location_dir.mkdir(parents=True, exist_ok=True)
-                        
-                        # Handle renaming if needed
-                        renamed = False
-                        if original_path.name != correct_filename:
-                            try:
-                                if correct_file_path.exists():
-                                    # Remove the old file
-                                    original_path.unlink()
-                                    print(f"🔄 Removed old file: {original_path.name}")
-                                else:
-                                    # Rename the file
-                                    original_path.rename(correct_file_path)
-                                    print(f"🔄 Renamed: {original_path.name} → {correct_filename}")
-                                renamed = True
-                                export_summary['renamed_files'].append({
-                                    'old_name': original_path.name,
-                                    'new_name': correct_filename,
-                                    'path': str(correct_file_path)
-                                })
-                            except Exception as e:
-                                print(f"⚠️  Failed to rename {original_path.name}: {str(e)}")
-                        
-                        # Write the updated config
+                    print(f"Processing location: {location_label} ({location_folder})")
+                    
+                    # Create location-specific config
+                    location_specific_config = latest_config.copy()
+                    location_specific_config['locations'] = [location]  # Only this location
+                    
+                    # Determine correct file path for this location
+                    location_dir = self.monitors_dir / space_id / location_folder
+                    correct_file_path = location_dir / correct_filename
+                    
+                    # Ensure directory exists
+                    location_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Handle renaming if this is the original location and file needs renaming
+                    renamed = False
+                    if (location_folder == original_location_folder and 
+                        original_path.exists() and 
+                        original_path.name != correct_filename):
                         try:
-                            with open(correct_file_path, 'w', encoding='utf-8') as f:
-                                json.dump(location_specific_config, f, indent=2, ensure_ascii=False)
-                            
-                            print(f"✅ Exported: {monitor_name} → {space_id}/{original_location_folder}/{correct_filename}")
-                            
-                            if renamed:
-                                # File was renamed - already tracked
-                                pass
+                            if correct_file_path.exists():
+                                # Remove the old file
+                                original_path.unlink()
+                                print(f"🔄 Removed old file: {original_path.name}")
                             else:
-                                # File was updated
-                                export_summary['updated_files'].append({
-                                    'monitor': monitor_name,
-                                    'config_id': config_id,
-                                    'file_path': str(correct_file_path)
-                                })
-                        
+                                # Rename the file
+                                original_path.rename(correct_file_path)
+                                print(f"🔄 Renamed: {original_path.name} → {correct_filename}")
+                            renamed = True
+                            export_summary['renamed_files'].append({
+                                'old_name': original_path.name,
+                                'new_name': correct_filename,
+                                'path': str(correct_file_path)
+                            })
                         except Exception as e:
-                            print(f"❌ Failed to write file for {monitor_name}: {str(e)}")
-                            export_summary['failed_exports'].append({
+                            print(f"⚠️  Failed to rename {original_path.name}: {str(e)}")
+                    
+                    # Write the updated config for this location
+                    try:
+                        with open(correct_file_path, 'w', encoding='utf-8') as f:
+                            json.dump(location_specific_config, f, indent=2, ensure_ascii=False)
+                        
+                        print(f"✅ Exported: {monitor_name} → {space_id}/{location_folder}/{correct_filename}")
+                        
+                        if renamed:
+                            # File was renamed - already tracked
+                            pass
+                        else:
+                            # File was updated
+                            export_summary['updated_files'].append({
                                 'monitor': monitor_name,
                                 'config_id': config_id,
-                                'error': str(e)
+                                'file_path': str(correct_file_path)
                             })
-                    else:
-                        print(f"⚠️  No matching location found for {original_location_folder}")
-                else:
-                    print(f"⚠️  Invalid file path format: {original_file_path}")
+                    
+                    except Exception as e:
+                        print(f"❌ Failed to write file for {monitor_name} at {location_folder}: {str(e)}")
+                        export_summary['failed_exports'].append({
+                            'monitor': monitor_name,
+                            'config_id': config_id,
+                            'location': location_folder,
+                            'error': str(e)
+                        })
             
             except Exception as e:
                 print(f"❌ Error processing monitor {monitor_info.get('monitor_name', 'Unknown')}: {str(e)}")
