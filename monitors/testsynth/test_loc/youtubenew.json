@@ -13,7 +13,7 @@
     "unit": "m",
     "number": "10"
   },
-  "config_id": "ytnew",
+  "config_id": "ec6938ff-42a6-44c7-a88c-5babd1856d50",
   "name": "youtubenew",
   "locations": [
     {
@@ -29,7 +29,7 @@
   ],
   "namespace": "testsynth",
   "origin": "ui",
-  "id": "d96466d7-6cdf-4ef5-a42f-f1d1b601e1b8",
+  "id": "ec6938ff-42a6-44c7-a88c-5babd1856d50",
   "max_attempts": 2,
   "revision": 1,
   "__ui": {
@@ -56,8 +56,8 @@
     "TLSv1.2",
     "TLSv1.3"
   ],
-  "created_at": "2025-07-23T09:30:39.931Z",
-  "updated_at": "2025-07-23T09:30:39.931Z",
+  "created_at": "2025-07-23T10:27:12.910Z",
+  "updated_at": "2025-07-23T10:27:12.910Z",
   "inline_script": "step('Go to https://www.youtube.com', async () => {\n  await page.goto('https://www.youtube.com');\n});",
   "retest_on_failure": true,
   "spaceId": "testsynth"
