@@ -116,20 +116,47 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-        # Create a new branch for the elastic agent config updates
-        BRANCH_NAME="update-elastic-agent-config-$(date -u '+%Y%m%d-%H%M%S')"
-        echo "Creating branch: $BRANCH_NAME"
-        git checkout -b "$BRANCH_NAME"
-        
-        # Add and commit changes
-        git add monitors/*/*/elastic-agent.yml
-        if git diff --staged --quiet; then
-          echo "No changes to commit"
+        # Check if the triggering workflow was from a pull request
+        if [ "${{ github.event.workflow_run.event }}" = "pull_request" ]; then
+          # For PR events, commit to the same PR branch
+          echo "Pull request detected - committing to the same branch"
+          
+          # Get the PR branch name from the workflow run
+          PR_BRANCH="${{ github.event.workflow_run.head_branch }}"
+          echo "PR branch: $PR_BRANCH"
+          
+          # Checkout the PR branch
+          git fetch origin "$PR_BRANCH"
+          git checkout "$PR_BRANCH"
+          
+          # Add and commit changes
+          git add monitors/*/*/elastic-agent.yml
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update elastic-agent.yml configurations - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            git push origin "$PR_BRANCH"
+            echo "Pushed changes to PR branch: $PR_BRANCH"
+            echo "branch_name=$PR_BRANCH" >> $GITHUB_ENV
+            echo "is_pr_update=true" >> $GITHUB_ENV
+          fi
         else
-          git commit -m "Update elastic-agent.yml configurations - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          git push origin "$BRANCH_NAME"
-          echo "Pushed changes to branch: $BRANCH_NAME"
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
+          # For push events, create a new branch
+          BRANCH_NAME="update-elastic-agent-config-$(date -u '+%Y%m%d-%H%M%S')"
+          echo "Creating new branch: $BRANCH_NAME"
+          git checkout -b "$BRANCH_NAME"
+          
+          # Add and commit changes
+          git add monitors/*/*/elastic-agent.yml
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update elastic-agent.yml configurations - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            git push origin "$BRANCH_NAME"
+            echo "Pushed changes to branch: $BRANCH_NAME"
+            echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
+            echo "is_pr_update=false" >> $GITHUB_ENV
+          fi
         fi
     
     - name: Create deployment summary
@@ -167,7 +194,11 @@ jobs:
           
           # Add branch info if available
           if [ -n "$BRANCH_NAME" ]; then
-            echo "**Branch created**: \`$BRANCH_NAME\`" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ env.is_pr_update }}" = "true" ]; then
+              echo "**Updated PR branch**: \`$BRANCH_NAME\`" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "**Branch created**: \`$BRANCH_NAME\`" >> $GITHUB_STEP_SUMMARY
+            fi
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
           
@@ -194,11 +225,19 @@ jobs:
           
           # Add next steps
           if [ -n "$BRANCH_NAME" ]; then
-            {
-              echo "1. Review the changes in branch \`$BRANCH_NAME\`"
-              echo "2. Create a pull request to merge the updated configurations"
-              echo "3. Merge the PR to apply the elastic-agent.yml updates"
-            } >> $GITHUB_STEP_SUMMARY
+            if [ "${{ env.is_pr_update }}" = "true" ]; then
+              {
+                echo "1. Changes have been committed to the existing PR branch \`$BRANCH_NAME\`"
+                echo "2. The pull request will automatically show the updated elastic-agent.yml files"
+                echo "3. Review and merge the PR to apply all changes together"
+              } >> $GITHUB_STEP_SUMMARY
+            else
+              {
+                echo "1. Review the changes in branch \`$BRANCH_NAME\`"
+                echo "2. Create a pull request to merge the updated configurations"
+                echo "3. Merge the PR to apply the elastic-agent.yml updates"
+              } >> $GITHUB_STEP_SUMMARY
+            fi
           else
             echo "No changes were made to elastic-agent.yml files" >> $GITHUB_STEP_SUMMARY
           fi
