@@ -28,9 +28,12 @@ jobs:
         echo "Workflow run name: ${{ github.event.workflow_run.name }}"
         echo "Head commit message: ${{ github.event.workflow_run.head_commit.message }}"
         
-        # Only proceed for push events (auto imports) or live manual imports
+        # Only proceed for push events (auto imports), pull requests, or live manual imports
         if [ "${{ github.event.workflow_run.event }}" = "push" ]; then
           echo "Push event detected - proceeding with elastic agent update"
+          echo "should_update=true" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event.workflow_run.event }}" = "pull_request" ]; then
+          echo "Pull request event detected - proceeding with elastic agent update"
           echo "should_update=true" >> $GITHUB_OUTPUT
         elif [ "${{ github.event.workflow_run.event }}" = "workflow_dispatch" ]; then
           # For manual runs, we can't easily detect if it was dry run or fresh import
@@ -70,9 +73,18 @@ jobs:
         echo "Workflow run head SHA: ${{ github.event.workflow_run.head_sha }}"
         echo "Workflow run event: ${{ github.event.workflow_run.event }}"
         
-        # For workflow_run events, get changed files from the triggering push
-        changed_files=$(git diff --name-only HEAD~1..HEAD | grep -E '^monitors/.*/.*\.json$' || true)
-        echo "Workflow run changed JSON files: $changed_files"
+        # Get changed files based on the triggering event type
+        if [ "${{ github.event.workflow_run.event }}" = "pull_request" ]; then
+          # For pull requests, compare against the base branch
+          echo "Getting changed files for pull request..."
+          changed_files=$(git diff --name-only origin/main...HEAD | grep -E '^monitors/.*/.*\.json$' || true)
+        else
+          # For push events, use the commit range
+          echo "Getting changed files for push event..."
+          changed_files=$(git diff --name-only HEAD~1..HEAD | grep -E '^monitors/.*/.*\.json$' || true)
+        fi
+        
+        echo "Changed JSON files: $changed_files"
         
         if [ -n "$changed_files" ]; then
           # Extract unique space_id/location combinations
