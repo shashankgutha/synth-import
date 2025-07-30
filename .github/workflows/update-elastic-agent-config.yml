@@ -51,6 +51,8 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
+        # For pull request workflow runs, checkout the PR head commit
+        ref: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_sha || github.ref }}
     
     - name: Setup Python
       if: github.event_name != 'workflow_run' || steps.should-update.outputs.should_update == 'true'
@@ -75,16 +77,13 @@ jobs:
         
         # Get changed files based on the triggering event type
         if [ "${{ github.event.workflow_run.event }}" = "pull_request" ]; then
-          # For pull requests, we need to fetch the PR branch and compare
+          # For pull requests, compare current HEAD (PR commit) against main branch
           echo "Getting changed files for pull request..."
           PR_HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
           echo "PR head SHA: $PR_HEAD_SHA"
           
-          # Fetch the PR commit
-          git fetch origin "$PR_HEAD_SHA"
-          
-          # Compare the PR head against main branch
-          all_changed_files=$(git diff --name-only origin/main..."$PR_HEAD_SHA" | grep -E '^monitors/.*/.*\.json$' || true)
+          # We're already on the PR commit, so compare against main
+          all_changed_files=$(git diff --name-only origin/main...HEAD | grep -E '^monitors/.*/.*\.json$' || true)
         else
           # For push events, use the commit range
           echo "Getting changed files for push event..."
