@@ -84,14 +84,30 @@ jobs:
           git fetch origin "$PR_HEAD_SHA"
           
           # Compare the PR head against main branch
-          changed_files=$(git diff --name-only origin/main..."$PR_HEAD_SHA" | grep -E '^monitors/.*/.*\.json$' || true)
+          all_changed_files=$(git diff --name-only origin/main..."$PR_HEAD_SHA" | grep -E '^monitors/.*/.*\.json$' || true)
         else
           # For push events, use the commit range
           echo "Getting changed files for push event..."
-          changed_files=$(git diff --name-only HEAD~1..HEAD | grep -E '^monitors/.*/.*\.json$' || true)
+          all_changed_files=$(git diff --name-only HEAD~1..HEAD | grep -E '^monitors/.*/.*\.json$' || true)
         fi
         
-        echo "Changed JSON files: $changed_files"
+        echo "All changed JSON files (including deleted): $all_changed_files"
+        
+        # Filter out deleted files - only keep files that actually exist
+        changed_files=""
+        if [ -n "$all_changed_files" ]; then
+          echo "Filtering out deleted files..."
+          for file in $all_changed_files; do
+            if [ -f "$file" ]; then
+              echo "✅ Exists: $file"
+              changed_files="$changed_files $file"
+            else
+              echo "❌ Deleted (skipping): $file"
+            fi
+          done
+        fi
+        
+        echo "Final changed JSON files: $changed_files"
         
         if [ -n "$changed_files" ]; then
           # Extract unique space_id/location combinations
@@ -111,7 +127,7 @@ jobs:
           echo "Found changed folders: $changed_folders"
         else
           echo "changed_folders=" >> $GITHUB_OUTPUT
-          echo "No changed monitor folders found"
+          echo "No existing monitor folders found"
         fi
     
     - name: Update Elastic Agent Configurations
