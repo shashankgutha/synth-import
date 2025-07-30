@@ -1,5 +1,5 @@
 id: fleet-first-agent-policy
-revision: 44
+revision: 71
 outputs:
   35a734ba-e4aa-40db-bc47-8dca570c8cf9:
     type: elasticsearch
@@ -145,7 +145,7 @@ output_permissions:
             - auto_configure
             - create_doc
             - read
-    59af9b99-9527-43da-9414-00fc6e23981f-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth:
+    ec6938ff-42a6-44c7-a88c-5babd1856d50-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth:
       indices:
         - names:
             - synthetics-browser-testsynth
@@ -162,6 +162,26 @@ output_permissions:
         - names:
             - synthetics-browser.screenshot-testsynth
           privileges: &ref_9
+            - auto_configure
+            - create_doc
+            - read
+    59af9b99-9527-43da-9414-00fc6e23981f-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth:
+      indices:
+        - names:
+            - synthetics-browser-testsynth
+          privileges: &ref_10
+            - auto_configure
+            - create_doc
+            - read
+        - names:
+            - synthetics-browser.network-testsynth
+          privileges: &ref_11
+            - auto_configure
+            - create_doc
+            - read
+        - names:
+            - synthetics-browser.screenshot-testsynth
+          privileges: &ref_12
             - auto_configure
             - create_doc
             - read
@@ -347,9 +367,90 @@ inputs:
               fields:
                 monitor.fleet_managed: true
   - id: >-
+      synthetics/browser-synthetics-ec6938ff-42a6-44c7-a88c-5babd1856d50-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth
+    name: youtubenew-test loc-testsynth
+    revision: 1
+    type: synthetics/browser
+    use_output: 35a734ba-e4aa-40db-bc47-8dca570c8cf9
+    meta:
+      package:
+        name: synthetics
+        version: 1.3.0
+    data_stream:
+      namespace: testsynth
+    package_policy_id: >-
+      ec6938ff-42a6-44c7-a88c-5babd1856d50-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth
+    streams:
+      - id: ec6938ff-42a6-44c7-a88c-5babd1856d50
+        name: youtubenew
+        type: browser
+        enabled: false
+        data_stream:
+          dataset: browser
+          type: synthetics
+          elasticsearch:
+            privileges:
+              indices: *ref_7
+        __ui:
+          is_tls_enabled: true
+          script_source:
+            is_generated_script: false
+            file_name: ''
+        origin: ui
+        run_from.id: 7f74d8f3-afd0-411b-b6ed-96e41a61eb71
+        run_from.geo.name: test loc
+        schedule: '@every 10m'
+        timeout: null
+        throttling:
+          download: 5
+          upload: 3
+          latency: 20
+        source.inline.script: |-
+          step('Go to https://www.youtube.com', async () => {
+            await page.goto('https://www.youtube.com');
+          });
+        screenshots: 'on'
+        max_attempts: 2
+        processors:
+          - add_fields:
+              fields:
+                meta:
+                  space_id: testsynth
+                monitor.fleet_managed: true
+                config_id: ec6938ff-42a6-44c7-a88c-5babd1856d50
+                monitor.project.name: ''
+                monitor.project.id: ''
+              target: ''
+      - id: >-
+          synthetics/browser-browser.network-ec6938ff-42a6-44c7-a88c-5babd1856d50-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth
+        data_stream:
+          dataset: browser.network
+          type: synthetics
+          elasticsearch:
+            privileges:
+              indices: *ref_8
+        processors:
+          - add_fields:
+              target: ''
+              fields:
+                monitor.fleet_managed: true
+      - id: >-
+          synthetics/browser-browser.screenshot-ec6938ff-42a6-44c7-a88c-5babd1856d50-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth
+        data_stream:
+          dataset: browser.screenshot
+          type: synthetics
+          elasticsearch:
+            privileges:
+              indices: *ref_9
+        processors:
+          - add_fields:
+              target: ''
+              fields:
+                monitor.fleet_managed: true
+  - id: >-
       synthetics/browser-synthetics-59af9b99-9527-43da-9414-00fc6e23981f-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth
     name: https://www.youtube.com-test loc-testsynth
-    revision: 3
+    revision: 16
     type: synthetics/browser
     use_output: 35a734ba-e4aa-40db-bc47-8dca570c8cf9
     meta:
@@ -364,13 +465,13 @@ inputs:
       - id: 59af9b99-9527-43da-9414-00fc6e23981f
         name: https://www.youtube.com
         type: browser
-        enabled: true
+        enabled: false
         data_stream:
           dataset: browser
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_7
+              indices: *ref_10
         __ui:
           is_tls_enabled: true
           script_source:
@@ -408,7 +509,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_8
+              indices: *ref_11
         processors:
           - add_fields:
               target: ''
@@ -421,7 +522,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_9
+              indices: *ref_12
         processors:
           - add_fields:
               target: ''
@@ -429,8 +530,8 @@ inputs:
                 monitor.fleet_managed: true
 signed:
   data: >-
-    eyJpZCI6ImZsZWV0LWZpcnN0LWFnZW50LXBvbGljeSIsImFnZW50Ijp7ImZlYXR1cmVzIjp7fSwicHJvdGVjdGlvbiI6eyJlbmFibGVkIjpmYWxzZSwidW5pbnN0YWxsX3Rva2VuX2hhc2giOiJvbnlObzcra01IM2dXbFdYcDlreXIyTGwwT0RJc2pMZXlzdTIwYjJHejNFPSIsInNpZ25pbmdfa2V5IjoiTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFYVFJZ2NlOFdsQUtxSjZ4d1dWZGorbFRJdzh4dlR3eUNPRkFEZWNwSUh5OWJ5UkpmR3Via09odTB2eWdEQkJzUXBFNFNEbWdaOExrUm95VDhyMWFtclE9PSJ9fSwiaW5wdXRzIjpbeyJpZCI6InN5bnRoZXRpY3MvYnJvd3Nlci1zeW50aGV0aWNzLTFmMDFmNzZhLWIxMTgtNDMyOC04ZTgyLTQ5OTdhMzQ3YWQzNS03Zjc0ZDhmMy1hZmQwLTQxMWItYjZlZC05NmU0MWE2MWViNzEtZGVmYXVsdCIsIm5hbWUiOiJsb2dfZ29vZ2xlLXRlc3QgbG9jLWRlZmF1bHQiLCJyZXZpc2lvbiI6NCwidHlwZSI6InN5bnRoZXRpY3MvYnJvd3NlciJ9LHsiaWQiOiJzeW50aGV0aWNzL2Jyb3dzZXItc3ludGhldGljcy0wODNjY2E5Yy0yZDZlLTQxNzYtODVhZS1mNGZhMTI3NmRjNzMtN2Y3NGQ4ZjMtYWZkMC00MTFiLWI2ZWQtOTZlNDFhNjFlYjcxLWRlZmF1bHQiLCJuYW1lIjoiZ29vZ2xlLXRlc3QgbG9jLWRlZmF1bHQiLCJyZXZpc2lvbiI6MTIsInR5cGUiOiJzeW50aGV0aWNzL2Jyb3dzZXIifSx7ImlkIjoic3ludGhldGljcy9icm93c2VyLXN5bnRoZXRpY3MtNTlhZjliOTktOTUyNy00M2RhLTk0MTQtMDBmYzZlMjM5ODFmLTdmNzRkOGYzLWFmZDAtNDExYi1iNmVkLTk2ZTQxYTYxZWI3MS10ZXN0c3ludGgiLCJuYW1lIjoiaHR0cHM6Ly93d3cueW91dHViZS5jb20tdGVzdCBsb2MtdGVzdHN5bnRoIiwicmV2aXNpb24iOjMsInR5cGUiOiJzeW50aGV0aWNzL2Jyb3dzZXIifV19
+    eyJpZCI6ImZsZWV0LWZpcnN0LWFnZW50LXBvbGljeSIsImFnZW50Ijp7ImZlYXR1cmVzIjp7fSwicHJvdGVjdGlvbiI6eyJlbmFibGVkIjpmYWxzZSwidW5pbnN0YWxsX3Rva2VuX2hhc2giOiJvbnlObzcra01IM2dXbFdYcDlreXIyTGwwT0RJc2pMZXlzdTIwYjJHejNFPSIsInNpZ25pbmdfa2V5IjoiTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFYVFJZ2NlOFdsQUtxSjZ4d1dWZGorbFRJdzh4dlR3eUNPRkFEZWNwSUh5OWJ5UkpmR3Via09odTB2eWdEQkJzUXBFNFNEbWdaOExrUm95VDhyMWFtclE9PSJ9fSwiaW5wdXRzIjpbeyJpZCI6InN5bnRoZXRpY3MvYnJvd3Nlci1zeW50aGV0aWNzLTFmMDFmNzZhLWIxMTgtNDMyOC04ZTgyLTQ5OTdhMzQ3YWQzNS03Zjc0ZDhmMy1hZmQwLTQxMWItYjZlZC05NmU0MWE2MWViNzEtZGVmYXVsdCIsIm5hbWUiOiJsb2dfZ29vZ2xlLXRlc3QgbG9jLWRlZmF1bHQiLCJyZXZpc2lvbiI6NCwidHlwZSI6InN5bnRoZXRpY3MvYnJvd3NlciJ9LHsiaWQiOiJzeW50aGV0aWNzL2Jyb3dzZXItc3ludGhldGljcy0wODNjY2E5Yy0yZDZlLTQxNzYtODVhZS1mNGZhMTI3NmRjNzMtN2Y3NGQ4ZjMtYWZkMC00MTFiLWI2ZWQtOTZlNDFhNjFlYjcxLWRlZmF1bHQiLCJuYW1lIjoiZ29vZ2xlLXRlc3QgbG9jLWRlZmF1bHQiLCJyZXZpc2lvbiI6MTIsInR5cGUiOiJzeW50aGV0aWNzL2Jyb3dzZXIifSx7ImlkIjoic3ludGhldGljcy9icm93c2VyLXN5bnRoZXRpY3MtZWM2OTM4ZmYtNDJhNi00NGM3LWE4OGMtNWJhYmQxODU2ZDUwLTdmNzRkOGYzLWFmZDAtNDExYi1iNmVkLTk2ZTQxYTYxZWI3MS10ZXN0c3ludGgiLCJuYW1lIjoieW91dHViZW5ldy10ZXN0IGxvYy10ZXN0c3ludGgiLCJyZXZpc2lvbiI6MSwidHlwZSI6InN5bnRoZXRpY3MvYnJvd3NlciJ9LHsiaWQiOiJzeW50aGV0aWNzL2Jyb3dzZXItc3ludGhldGljcy01OWFmOWI5OS05NTI3LTQzZGEtOTQxNC0wMGZjNmUyMzk4MWYtN2Y3NGQ4ZjMtYWZkMC00MTFiLWI2ZWQtOTZlNDFhNjFlYjcxLXRlc3RzeW50aCIsIm5hbWUiOiJodHRwczovL3d3dy55b3V0dWJlLmNvbS10ZXN0IGxvYy10ZXN0c3ludGgiLCJyZXZpc2lvbiI6MTYsInR5cGUiOiJzeW50aGV0aWNzL2Jyb3dzZXIifV19
   signature: >-
-    MEUCIQCFT6K9aSpuZQ6TXcvfHG80JhD63s7ITcMmYOYP7cPOygIgEeCNYraPTQUM5pIQJUsdcOPer/hZRqg9PBVTpPCFwxk=
+    MEQCICorzwBndDi9jZ8hfrBet+lkQ3MyN1S9syNM8p8JA7zDAiB9FxRUQW7dHIao8reEbnyEx1bOiVSp1gXqHP1wXgIqgg==
 secret_references: []
 namespaces: []
