@@ -110,21 +110,27 @@ jobs:
         echo "Final changed JSON files: $changed_files"
         
         if [ -n "$changed_files" ]; then
-          # Extract unique space_id/location combinations
+          # Extract unique space_id/location combinations and verify folders exist
           changed_folders=""
           for file in $changed_files; do
             # Extract space_id and location from monitors/space_id/location/file.json
             space_id=$(echo $file | cut -d'/' -f2)
             location=$(echo $file | cut -d'/' -f3)
             folder="$space_id/$location"
-            if [[ ! $changed_folders =~ $folder ]]; then
+            folder_path="monitors/$folder"
+            
+            # Only include folder if it exists and we haven't already added it
+            if [ -d "$folder_path" ] && [[ ! $changed_folders =~ $folder ]]; then
               changed_folders="$changed_folders $folder"
+              echo "✅ Folder exists: $folder_path"
+            elif [ ! -d "$folder_path" ]; then
+              echo "❌ Folder deleted (skipping): $folder_path"
             fi
           done
           
           changed_folders=$(echo $changed_folders | xargs)
           echo "changed_folders=$changed_folders" >> $GITHUB_OUTPUT
-          echo "Found changed folders: $changed_folders"
+          echo "Found existing changed folders: $changed_folders"
         else
           echo "changed_folders=" >> $GITHUB_OUTPUT
           echo "No existing monitor folders found"
