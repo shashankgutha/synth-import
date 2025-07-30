@@ -1,6 +1,6 @@
 {
   "type": "browser",
-  "enabled": false,
+  "enabled": true,
   "alert": {
     "status": {
       "enabled": true
@@ -13,7 +13,7 @@
     "unit": "m",
     "number": "10"
   },
-  "config_id": "d96466d7-6cdf-4ef5-a42f-f1d1b601e1b8",
+  "config_id": "2ced84af-dc8d-4864-aecf-c65065e46735",
   "name": "youtubene",
   "locations": [
     {
@@ -29,9 +29,9 @@
   ],
   "namespace": "testsynth",
   "origin": "ui",
-  "id": "d96466d7-6cdf-4ef5-a42f-f1d1b601e1b8",
+  "id": "2ced84af-dc8d-4864-aecf-c65065e46735",
   "max_attempts": 2,
-  "revision": 1,
+  "revision": 4,
   "__ui": {
     "is_tls_enabled": true,
     "script_source": {
@@ -56,8 +56,8 @@
     "TLSv1.2",
     "TLSv1.3"
   ],
-  "created_at": "2025-07-23T09:30:39.931Z",
-  "updated_at": "2025-07-23T09:30:39.931Z",
+  "created_at": "2025-07-30T07:45:21.568Z",
+  "updated_at": "2025-07-30T08:18:52.771Z",
   "inline_script": "step('Go to https://www.youtube.com', async () => {\n  await page.goto('https://www.youtube.com');\n});",
   "retest_on_failure": true,
   "spaceId": "testsynth"
