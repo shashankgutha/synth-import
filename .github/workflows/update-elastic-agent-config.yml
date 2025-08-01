@@ -168,6 +168,7 @@ jobs:
           # Checkout the PR branch
           git fetch origin "$PR_BRANCH"
           git checkout "$PR_BRANCH"
+          git checkout -B "$PR_BRANCH" origin/"$PR_BRANCH"
           
           # Add and commit changes
           git add monitors/*/*/elastic-agent.yml
