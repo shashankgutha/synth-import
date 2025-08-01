@@ -262,7 +262,225 @@ find monitors -name "*.json" -exec python -m json.tool {} \; > /dev/null
 
 ## Usage Examples
 
-### Example 1: Initial Setup and Export
+### Example 1: Complete End-to-End Workflow (Recommended)
+
+**Scenario**: Create a new monitor in Kibana UI and deploy it to Kubernetes through the complete GitOps pipeline.
+
+This example demonstrates the full workflow from monitor creation to Kubernetes deployment.
+
+#### Step 1: Create Monitor in Kibana UI
+
+1. **Navigate to Kibana Synthetics**:
+   - Go to your Kibana instance: `https://your-kibana.example.com`
+   - Navigate to **Observability** → **Synthetics**
+
+2. **Create a New Monitor**:
+   ```
+   Monitor Type: HTTP
+   Name: Production API Health Check
+   URL: https://api.example.com/health
+   Schedule: Every 2 minutes
+   Locations: Select your desired location (e.g., "Asia Pacific India")
+   ```
+
+3. **Save the Monitor**:
+   - Click "Save monitor"
+   - Note the monitor will be created with a unique `config_id`
+
+#### Step 2: Export Monitor to Git Branch
+
+1. **Trigger Export Workflow**:
+   - Go to **GitHub Actions** → **Export Synthetics Monitors**
+   - Click "Run workflow"
+   - Set parameters:
+     ```
+     spaces: default (or your target space)
+     ```
+   - Click "Run workflow"
+
+2. **Workflow Actions**:
+   ```bash
+   # The workflow will:
+   # - Export the new monitor from Kibana
+   # - Create monitor JSON file: monitors/default/Asia_Pacific_India/Production_API_Health_Check.json
+   # - Commit to a new branch: automated-synthetics-export-20240801-143022
+   ```
+
+3. **Expected Output**:
+   ```
+   monitors/
+   └── default/
+       └── Asia_Pacific_India/
+           ├── Production_API_Health_Check.json  # ← New monitor file
+           └── elastic-agent.yml                 # ← Existing agent config
+   ```
+
+#### Step 3: Create Pull Request to Main Branch
+
+1. **Create PR via GitHub UI**:
+   - Navigate to the new branch created by export workflow
+   - Click "Compare & pull request"
+   - Title: `Add Production API Health Check monitor`
+   - Description:
+     ```markdown
+     ## New Monitor Added
+     - **Name**: Production API Health Check
+     - **Type**: HTTP
+     - **URL**: https://api.example.com/health
+     - **Schedule**: Every 2 minutes
+     - **Location**: Asia Pacific India
+     
+     ## Changes
+     - Added monitor configuration file
+     - Ready for import and deployment
+     ```
+
+2. **PR Triggers Validation**:
+   ```bash
+   # Automatically triggered workflows:
+   # ✅ Import Synthetics Monitors (dry-run mode)
+   # ✅ Validates JSON syntax
+   # ✅ Shows preview of changes that will be applied
+   ```
+
+#### Step 4: Import Monitor & Fetch Elastic Agent Config
+
+1. **PR Validation Results**:
+   - Check the PR for workflow status
+   - Review the dry-run import results in Actions tab
+   - Verify the monitor configuration looks correct
+
+2. **Automatic Workflow Chain** (triggered on PR):
+   ```mermaid
+   graph LR
+   A[PR Created] --> B[Import Synthetics - Dry Run]
+   B --> C[Validation Passed]
+   C --> D[Ready for Review]
+   ```
+
+3. **Expected PR Comment**:
+   ```markdown
+   ## 🔄 Synthetics Monitor Import Summary
+   **Space:** `default`
+   **Status:** ✅ Dry-run validation completed successfully
+   
+   **Files processed (1):**
+   - `Production_API_Health_Check.json`
+   
+   **📥 Preview:** Monitor will be imported to Kibana
+   *This is a dry-run - no changes applied yet*
+   ```
+
+#### Step 5: Verify and Merge PR to Main Branch
+
+1. **Review Changes**:
+   - Verify the monitor JSON configuration
+   - Check that all required fields are present
+   - Ensure the location and schedule are correct
+
+2. **Merge PR**:
+   - Click "Merge pull request"
+   - Use "Squash and merge" for clean history
+   - Delete the feature branch after merge
+
+3. **Post-Merge Workflow Chain**:
+   ```mermaid
+   graph TD
+   A[PR Merged to Main] --> B[Import Synthetics - Live Mode]
+   B --> C[Monitor Created in Kibana]
+   C --> D[Update Elastic Agent Config]
+   D --> E[Fetch Latest Agent YAML]
+   E --> F[Update elastic-agent.yml]
+   F --> G[Commit Agent Config]
+   ```
+
+#### Step 6: Deploy to Kubernetes
+
+1. **Automatic Deployment Detection**:
+   ```bash
+   # The system detects changes to:
+   # - monitors/default/Asia_Pacific_India/elastic-agent.yml
+   # 
+   # If inputs/loc1/elastic-agent.yml or inputs/loc2/elastic-agent.yml 
+   # are also updated, Kubernetes deployment will trigger automatically
+   ```
+
+2. **Manual Kubernetes Deployment** (if needed):
+   - Go to **GitHub Actions** → **Deploy to Kubernetes**
+   - Click "Run workflow"
+   - Set parameters:
+     ```
+     environment: both (or loc1/loc2 specifically)
+     force_deploy: false
+     ```
+
+3. **Deployment Process**:
+   ```bash
+   # For each location (loc1, loc2):
+   # 1. Retrieve kubeconfig from Vault
+   # 2. Update ConfigMap with new elastic-agent.yml
+   # 3. Calculate ConfigMap hash
+   # 4. Update Deployment with new hash (triggers pod restart)
+   # 5. Wait for rollout completion
+   # 6. Verify deployment status
+   ```
+
+4. **Verification Commands**:
+   ```bash
+   # Check deployment status
+   kubectl get pods -n elastic-agents-loc1 -l app=elastic-agent
+   kubectl get pods -n elastic-agents-loc2 -l app=elastic-agent
+   
+   # Check agent logs
+   kubectl logs -n elastic-agents-loc1 -l app=elastic-agent --tail=50
+   kubectl logs -n elastic-agents-loc2 -l app=elastic-agent --tail=50
+   
+   # Verify ConfigMap
+   kubectl get configmap elastic-agent-config -n elastic-agents-loc1 -o yaml
+   ```
+
+#### Step 7: End-to-End Verification
+
+1. **Verify Monitor in Kibana**:
+   - Go back to Kibana Synthetics
+   - Confirm the monitor is running
+   - Check that data is being collected
+
+2. **Verify Kubernetes Deployment**:
+   - Check pod status in both clusters
+   - Verify agent logs show the new monitor configuration
+   - Confirm data is flowing to Elasticsearch
+
+3. **Monitor the Complete Pipeline**:
+   ```bash
+   # Check all workflow runs
+   gh run list --limit 10
+   
+   # Verify the chain of workflows completed successfully:
+   # ✅ Export Synthetics Monitors
+   # ✅ Import Synthetics Monitors  
+   # ✅ Update Elastic Agent Config
+   # ✅ Deploy to Kubernetes
+   ```
+
+#### Summary of Automated Workflows
+
+| Step | Workflow | Trigger | Action |
+|------|----------|---------|--------|
+| 2 | Export Synthetics | Manual | Export monitor from Kibana to Git branch |
+| 4a | Import Synthetics (Dry-run) | PR created | Validate monitor config |
+| 4b | Import Synthetics (Live) | PR merged | Create monitor in Kibana |
+| 4c | Update Elastic Agent Config | After import | Fetch and update agent YAML |
+| 6 | Deploy to Kubernetes | Agent config changed | Deploy to K8s clusters |
+
+This complete workflow ensures:
+- ✅ **Version Control**: All changes tracked in Git
+- ✅ **Validation**: Dry-run testing before applying changes  
+- ✅ **Automation**: Minimal manual intervention required
+- ✅ **Consistency**: Same configuration deployed across environments
+- ✅ **Rollback**: Easy to revert changes if needed
+
+### Example 2: Initial Setup and Export
 
 **Scenario**: You have an existing Kibana instance with synthetic monitors and want to start managing them with GitOps.
 
