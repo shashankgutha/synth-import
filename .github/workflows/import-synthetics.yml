@@ -21,7 +21,7 @@ on:
           - 'false'
       space_id:
         description: 'Kibana space ID'
-        required: false
+        required: true
         default: 'default'
         type: string
   pull_request:
@@ -34,11 +34,12 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  checks: write
 
 jobs:
   import-monitors:
     runs-on: ubuntu-latest
-    
+    name: import-monitors
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
