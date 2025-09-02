@@ -1,5 +1,5 @@
 id: fleet-first-agent-policy
-revision: 88
+revision: 93
 outputs:
   35a734ba-e4aa-40db-bc47-8dca570c8cf9:
     type: elasticsearch
@@ -105,47 +105,47 @@ output_permissions:
     _elastic_agent_checks:
       cluster:
         - monitor
-    1f01f76a-b118-4328-8e82-4997a347ad35-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default:
+    ec6938ff-42a6-44c7-a88c-5babd1856d50-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth:
       indices:
         - names:
-            - synthetics-browser-default
+            - synthetics-browser-testsynth
           privileges: &ref_1
             - auto_configure
             - create_doc
             - read
         - names:
-            - synthetics-browser.network-default
+            - synthetics-browser.network-testsynth
           privileges: &ref_2
             - auto_configure
             - create_doc
             - read
         - names:
-            - synthetics-browser.screenshot-default
+            - synthetics-browser.screenshot-testsynth
           privileges: &ref_3
             - auto_configure
             - create_doc
             - read
-    083cca9c-2d6e-4176-85ae-f4fa1276dc73-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default:
+    59af9b99-9527-43da-9414-00fc6e23981f-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth:
       indices:
         - names:
-            - synthetics-browser-default
+            - synthetics-browser-testsynth
           privileges: &ref_4
             - auto_configure
             - create_doc
             - read
         - names:
-            - synthetics-browser.network-default
+            - synthetics-browser.network-testsynth
           privileges: &ref_5
             - auto_configure
             - create_doc
             - read
         - names:
-            - synthetics-browser.screenshot-default
+            - synthetics-browser.screenshot-testsynth
           privileges: &ref_6
             - auto_configure
             - create_doc
             - read
-    ec6938ff-42a6-44c7-a88c-5babd1856d50-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth:
+    2ced84af-dc8d-4864-aecf-c65065e46735-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth:
       indices:
         - names:
             - synthetics-browser-testsynth
@@ -162,46 +162,6 @@ output_permissions:
         - names:
             - synthetics-browser.screenshot-testsynth
           privileges: &ref_9
-            - auto_configure
-            - create_doc
-            - read
-    59af9b99-9527-43da-9414-00fc6e23981f-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth:
-      indices:
-        - names:
-            - synthetics-browser-testsynth
-          privileges: &ref_10
-            - auto_configure
-            - create_doc
-            - read
-        - names:
-            - synthetics-browser.network-testsynth
-          privileges: &ref_11
-            - auto_configure
-            - create_doc
-            - read
-        - names:
-            - synthetics-browser.screenshot-testsynth
-          privileges: &ref_12
-            - auto_configure
-            - create_doc
-            - read
-    2ced84af-dc8d-4864-aecf-c65065e46735-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth:
-      indices:
-        - names:
-            - synthetics-browser-testsynth
-          privileges: &ref_13
-            - auto_configure
-            - create_doc
-            - read
-        - names:
-            - synthetics-browser.network-testsynth
-          privileges: &ref_14
-            - auto_configure
-            - create_doc
-            - read
-        - names:
-            - synthetics-browser.screenshot-testsynth
-          privileges: &ref_15
             - auto_configure
             - create_doc
             - read
@@ -222,170 +182,6 @@ agent:
     signing_key: >-
       MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaQIgce8WlAKqJ6xwWVdj+lTIw8xvTwyCOFADecpIHy9byRJfGubkOhu0vygDBBsQpE4SDmgZ8LkRoyT8r1amrQ==
 inputs:
-  - id: >-
-      synthetics/browser-synthetics-1f01f76a-b118-4328-8e82-4997a347ad35-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
-    name: log_google-test loc-default
-    revision: 4
-    type: synthetics/browser
-    use_output: 35a734ba-e4aa-40db-bc47-8dca570c8cf9
-    meta:
-      package:
-        name: synthetics
-        version: 1.3.0
-    data_stream:
-      namespace: default
-    package_policy_id: >-
-      1f01f76a-b118-4328-8e82-4997a347ad35-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
-    streams:
-      - id: 1f01f76a-b118-4328-8e82-4997a347ad35
-        name: log_google
-        type: browser
-        enabled: true
-        data_stream:
-          dataset: browser
-          type: synthetics
-          elasticsearch:
-            privileges:
-              indices: *ref_1
-        __ui:
-          is_tls_enabled: true
-          script_source:
-            is_generated_script: false
-            file_name: ''
-        origin: ui
-        run_from.id: 7f74d8f3-afd0-411b-b6ed-96e41a61eb71
-        run_from.geo.name: test loc
-        schedule: '@every 10m'
-        timeout: null
-        throttling:
-          download: 5
-          upload: 3
-          latency: 20
-        source.inline.script: |-
-          step('Go to https://www.google.com', async () => {
-            await page.goto('https://www.google.com');
-          });
-        params:
-          user: test
-        screenshots: 'on'
-        max_attempts: 2
-        processors:
-          - add_fields:
-              fields:
-                meta:
-                  space_id: default
-                monitor.fleet_managed: true
-                config_id: 1f01f76a-b118-4328-8e82-4997a347ad35
-                monitor.project.name: ''
-                monitor.project.id: ''
-              target: ''
-      - id: >-
-          synthetics/browser-browser.network-1f01f76a-b118-4328-8e82-4997a347ad35-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
-        data_stream:
-          dataset: browser.network
-          type: synthetics
-          elasticsearch:
-            privileges:
-              indices: *ref_2
-        processors:
-          - add_fields:
-              target: ''
-              fields:
-                monitor.fleet_managed: true
-      - id: >-
-          synthetics/browser-browser.screenshot-1f01f76a-b118-4328-8e82-4997a347ad35-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
-        data_stream:
-          dataset: browser.screenshot
-          type: synthetics
-          elasticsearch:
-            privileges:
-              indices: *ref_3
-        processors:
-          - add_fields:
-              target: ''
-              fields:
-                monitor.fleet_managed: true
-  - id: >-
-      synthetics/browser-synthetics-083cca9c-2d6e-4176-85ae-f4fa1276dc73-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
-    name: google-test loc-default
-    revision: 12
-    type: synthetics/browser
-    use_output: 35a734ba-e4aa-40db-bc47-8dca570c8cf9
-    meta:
-      package:
-        name: synthetics
-        version: 1.3.0
-    data_stream:
-      namespace: default
-    package_policy_id: >-
-      083cca9c-2d6e-4176-85ae-f4fa1276dc73-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
-    streams:
-      - id: 083cca9c-2d6e-4176-85ae-f4fa1276dc73
-        name: google
-        type: browser
-        enabled: false
-        data_stream:
-          dataset: browser
-          type: synthetics
-          elasticsearch:
-            privileges:
-              indices: *ref_4
-        __ui:
-          is_tls_enabled: true
-          script_source:
-            is_generated_script: false
-            file_name: ''
-        origin: ui
-        run_from.id: 7f74d8f3-afd0-411b-b6ed-96e41a61eb71
-        run_from.geo.name: test loc
-        schedule: '@every 10m'
-        timeout: null
-        throttling:
-          download: 5
-          upload: 3
-          latency: 20
-        source.inline.script: |-
-          step('Go to https://www.google.com', async () => {
-            await page.goto('https://www.google.com');
-          });
-        screenshots: 'on'
-        max_attempts: 2
-        processors:
-          - add_fields:
-              fields:
-                meta:
-                  space_id: default
-                monitor.fleet_managed: true
-                config_id: 083cca9c-2d6e-4176-85ae-f4fa1276dc73
-                monitor.project.name: ''
-                monitor.project.id: ''
-              target: ''
-      - id: >-
-          synthetics/browser-browser.network-083cca9c-2d6e-4176-85ae-f4fa1276dc73-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
-        data_stream:
-          dataset: browser.network
-          type: synthetics
-          elasticsearch:
-            privileges:
-              indices: *ref_5
-        processors:
-          - add_fields:
-              target: ''
-              fields:
-                monitor.fleet_managed: true
-      - id: >-
-          synthetics/browser-browser.screenshot-083cca9c-2d6e-4176-85ae-f4fa1276dc73-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-default
-        data_stream:
-          dataset: browser.screenshot
-          type: synthetics
-          elasticsearch:
-            privileges:
-              indices: *ref_6
-        processors:
-          - add_fields:
-              target: ''
-              fields:
-                monitor.fleet_managed: true
   - id: >-
       synthetics/browser-synthetics-ec6938ff-42a6-44c7-a88c-5babd1856d50-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth
     name: youtubenew-test loc-testsynth
@@ -410,7 +206,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_7
+              indices: *ref_1
         __ui:
           is_tls_enabled: true
           script_source:
@@ -448,7 +244,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_8
+              indices: *ref_2
         processors:
           - add_fields:
               target: ''
@@ -461,7 +257,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_9
+              indices: *ref_3
         processors:
           - add_fields:
               target: ''
@@ -470,7 +266,7 @@ inputs:
   - id: >-
       synthetics/browser-synthetics-59af9b99-9527-43da-9414-00fc6e23981f-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth
     name: https://www.youtube.com-test loc-testsynth
-    revision: 27
+    revision: 29
     type: synthetics/browser
     use_output: 35a734ba-e4aa-40db-bc47-8dca570c8cf9
     meta:
@@ -491,7 +287,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_10
+              indices: *ref_4
         __ui:
           is_tls_enabled: true
           script_source:
@@ -529,7 +325,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_11
+              indices: *ref_5
         processors:
           - add_fields:
               target: ''
@@ -542,7 +338,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_12
+              indices: *ref_6
         processors:
           - add_fields:
               target: ''
@@ -551,7 +347,7 @@ inputs:
   - id: >-
       synthetics/browser-synthetics-2ced84af-dc8d-4864-aecf-c65065e46735-7f74d8f3-afd0-411b-b6ed-96e41a61eb71-testsynth
     name: youtubene-test loc-testsynth
-    revision: 6
+    revision: 8
     type: synthetics/browser
     use_output: 35a734ba-e4aa-40db-bc47-8dca570c8cf9
     meta:
@@ -566,13 +362,13 @@ inputs:
       - id: 2ced84af-dc8d-4864-aecf-c65065e46735
         name: youtubene
         type: browser
-        enabled: false
+        enabled: true
         data_stream:
           dataset: browser
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_13
+              indices: *ref_7
         __ui:
           is_tls_enabled: true
           script_source:
@@ -610,7 +406,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_14
+              indices: *ref_8
         processors:
           - add_fields:
               target: ''
@@ -623,7 +419,7 @@ inputs:
           type: synthetics
           elasticsearch:
             privileges:
-              indices: *ref_15
+              indices: *ref_9
         processors:
           - add_fields:
               target: ''
@@ -631,8 +427,8 @@ inputs:
                 monitor.fleet_managed: true
 signed:
   data: >-
-    eyJpZCI6ImZsZWV0LWZpcnN0LWFnZW50LXBvbGljeSIsImFnZW50Ijp7ImZlYXR1cmVzIjp7fSwicHJvdGVjdGlvbiI6eyJlbmFibGVkIjpmYWxzZSwidW5pbnN0YWxsX3Rva2VuX2hhc2giOiJvbnlObzcra01IM2dXbFdYcDlreXIyTGwwT0RJc2pMZXlzdTIwYjJHejNFPSIsInNpZ25pbmdfa2V5IjoiTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFYVFJZ2NlOFdsQUtxSjZ4d1dWZGorbFRJdzh4dlR3eUNPRkFEZWNwSUh5OWJ5UkpmR3Via09odTB2eWdEQkJzUXBFNFNEbWdaOExrUm95VDhyMWFtclE9PSJ9fSwiaW5wdXRzIjpbeyJpZCI6InN5bnRoZXRpY3MvYnJvd3Nlci1zeW50aGV0aWNzLTFmMDFmNzZhLWIxMTgtNDMyOC04ZTgyLTQ5OTdhMzQ3YWQzNS03Zjc0ZDhmMy1hZmQwLTQxMWItYjZlZC05NmU0MWE2MWViNzEtZGVmYXVsdCIsIm5hbWUiOiJsb2dfZ29vZ2xlLXRlc3QgbG9jLWRlZmF1bHQiLCJyZXZpc2lvbiI6NCwidHlwZSI6InN5bnRoZXRpY3MvYnJvd3NlciJ9LHsiaWQiOiJzeW50aGV0aWNzL2Jyb3dzZXItc3ludGhldGljcy0wODNjY2E5Yy0yZDZlLTQxNzYtODVhZS1mNGZhMTI3NmRjNzMtN2Y3NGQ4ZjMtYWZkMC00MTFiLWI2ZWQtOTZlNDFhNjFlYjcxLWRlZmF1bHQiLCJuYW1lIjoiZ29vZ2xlLXRlc3QgbG9jLWRlZmF1bHQiLCJyZXZpc2lvbiI6MTIsInR5cGUiOiJzeW50aGV0aWNzL2Jyb3dzZXIifSx7ImlkIjoic3ludGhldGljcy9icm93c2VyLXN5bnRoZXRpY3MtZWM2OTM4ZmYtNDJhNi00NGM3LWE4OGMtNWJhYmQxODU2ZDUwLTdmNzRkOGYzLWFmZDAtNDExYi1iNmVkLTk2ZTQxYTYxZWI3MS10ZXN0c3ludGgiLCJuYW1lIjoieW91dHViZW5ldy10ZXN0IGxvYy10ZXN0c3ludGgiLCJyZXZpc2lvbiI6MSwidHlwZSI6InN5bnRoZXRpY3MvYnJvd3NlciJ9LHsiaWQiOiJzeW50aGV0aWNzL2Jyb3dzZXItc3ludGhldGljcy01OWFmOWI5OS05NTI3LTQzZGEtOTQxNC0wMGZjNmUyMzk4MWYtN2Y3NGQ4ZjMtYWZkMC00MTFiLWI2ZWQtOTZlNDFhNjFlYjcxLXRlc3RzeW50aCIsIm5hbWUiOiJodHRwczovL3d3dy55b3V0dWJlLmNvbS10ZXN0IGxvYy10ZXN0c3ludGgiLCJyZXZpc2lvbiI6MjcsInR5cGUiOiJzeW50aGV0aWNzL2Jyb3dzZXIifSx7ImlkIjoic3ludGhldGljcy9icm93c2VyLXN5bnRoZXRpY3MtMmNlZDg0YWYtZGM4ZC00ODY0LWFlY2YtYzY1MDY1ZTQ2NzM1LTdmNzRkOGYzLWFmZDAtNDExYi1iNmVkLTk2ZTQxYTYxZWI3MS10ZXN0c3ludGgiLCJuYW1lIjoieW91dHViZW5lLXRlc3QgbG9jLXRlc3RzeW50aCIsInJldmlzaW9uIjo2LCJ0eXBlIjoic3ludGhldGljcy9icm93c2VyIn1dfQ==
+    eyJpZCI6ImZsZWV0LWZpcnN0LWFnZW50LXBvbGljeSIsImFnZW50Ijp7ImZlYXR1cmVzIjp7fSwicHJvdGVjdGlvbiI6eyJlbmFibGVkIjpmYWxzZSwidW5pbnN0YWxsX3Rva2VuX2hhc2giOiJvbnlObzcra01IM2dXbFdYcDlreXIyTGwwT0RJc2pMZXlzdTIwYjJHejNFPSIsInNpZ25pbmdfa2V5IjoiTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFYVFJZ2NlOFdsQUtxSjZ4d1dWZGorbFRJdzh4dlR3eUNPRkFEZWNwSUh5OWJ5UkpmR3Via09odTB2eWdEQkJzUXBFNFNEbWdaOExrUm95VDhyMWFtclE9PSJ9fSwiaW5wdXRzIjpbeyJpZCI6InN5bnRoZXRpY3MvYnJvd3Nlci1zeW50aGV0aWNzLWVjNjkzOGZmLTQyYTYtNDRjNy1hODhjLTViYWJkMTg1NmQ1MC03Zjc0ZDhmMy1hZmQwLTQxMWItYjZlZC05NmU0MWE2MWViNzEtdGVzdHN5bnRoIiwibmFtZSI6InlvdXR1YmVuZXctdGVzdCBsb2MtdGVzdHN5bnRoIiwicmV2aXNpb24iOjEsInR5cGUiOiJzeW50aGV0aWNzL2Jyb3dzZXIifSx7ImlkIjoic3ludGhldGljcy9icm93c2VyLXN5bnRoZXRpY3MtNTlhZjliOTktOTUyNy00M2RhLTk0MTQtMDBmYzZlMjM5ODFmLTdmNzRkOGYzLWFmZDAtNDExYi1iNmVkLTk2ZTQxYTYxZWI3MS10ZXN0c3ludGgiLCJuYW1lIjoiaHR0cHM6Ly93d3cueW91dHViZS5jb20tdGVzdCBsb2MtdGVzdHN5bnRoIiwicmV2aXNpb24iOjI5LCJ0eXBlIjoic3ludGhldGljcy9icm93c2VyIn0seyJpZCI6InN5bnRoZXRpY3MvYnJvd3Nlci1zeW50aGV0aWNzLTJjZWQ4NGFmLWRjOGQtNDg2NC1hZWNmLWM2NTA2NWU0NjczNS03Zjc0ZDhmMy1hZmQwLTQxMWItYjZlZC05NmU0MWE2MWViNzEtdGVzdHN5bnRoIiwibmFtZSI6InlvdXR1YmVuZS10ZXN0IGxvYy10ZXN0c3ludGgiLCJyZXZpc2lvbiI6OCwidHlwZSI6InN5bnRoZXRpY3MvYnJvd3NlciJ9XX0=
   signature: >-
-    MEQCIHMwFqbYSG0OP5HKkiYK31Im1JwPCnUlPI7WKoCFXrKNAiBSc/Otxj/by5RAWRo677CJquJl879QDSwqrSbTxoSFeA==
+    MEYCIQCA8/OmyxIWpB8kNC00rf8OPf05EB0WXR+nKDXJYwmNJwIhAL/JeanKyFr1cvk0nWNdDxy50ULvHSpoolsGGGMqELGk
 secret_references: []
 namespaces: []
