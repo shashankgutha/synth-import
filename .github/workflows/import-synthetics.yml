@@ -38,7 +38,7 @@ permissions:
 jobs:
   import-monitors:
     runs-on: ubuntu-latest
-    
+    name: import-monitors
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
