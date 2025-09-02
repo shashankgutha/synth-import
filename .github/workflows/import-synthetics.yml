@@ -21,7 +21,7 @@ on:
           - 'false'
       space_id:
         description: 'Kibana space ID'
-        required: false
+        required: true
         default: 'default'
         type: string
   pull_request:
