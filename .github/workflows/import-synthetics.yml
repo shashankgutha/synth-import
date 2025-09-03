@@ -342,7 +342,7 @@ jobs:
           done <<< "$changed_files"
           
           echo "Final changed folders: $changed_folders"
-          python scripts/update_elastic_agent_config.py "$changed_folders"
+          python scripts/update-elastic-agent.py "$changed_folders"
         else
           echo "No changed files to process"
         fi
