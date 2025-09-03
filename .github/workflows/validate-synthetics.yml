@@ -1,0 +1,32 @@
+name: Validate Synthetics Workflow
+
+on:
+  workflow_run:
+    workflows: ["Import Synthetics Monitors"]
+    types:
+      - completed
+
+permissions:
+  actions: read
+
+jobs:
+  validate-workflow:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Validate jobs
+      run: |
+        # Get the workflow run conclusion directly from the event
+        WORKFLOW_CONCLUSION="${{ github.event.workflow_run.conclusion }}"
+        
+        echo "Workflow conclusion: $WORKFLOW_CONCLUSION"
+        
+        # The workflow_run event gives us the overall conclusion
+        # If the workflow succeeded, all required jobs succeeded
+        if [[ "$WORKFLOW_CONCLUSION" == "success" ]]; then
+          echo "✅ Import Synthetics Monitors workflow completed successfully"
+          exit 0
+        else
+          echo "❌ Import Synthetics Monitors workflow failed or was cancelled"
+          exit 1
+        fi
