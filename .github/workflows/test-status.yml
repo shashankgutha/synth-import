@@ -1,0 +1,67 @@
+name: Test Status Check
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test-status:
+    name: test-status
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Simple test
+      run: |
+        echo "Testing status check functionality"
+        echo "Workflow: ${{ github.workflow }}"
+        echo "Job: ${{ github.job }}"
+        echo "Event: ${{ github.event_name }}"
+        echo "Actor: ${{ github.actor }}"
+        
+    - name: Always pass
+      run: |
+        echo "✅ Test status check completed successfully"
+        echo "This job always passes to test status reporting"
+    
+    - name: Post PR comment
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const comment = `## 🧪 Test Status Check\n\n`;
+          comment += `**Status:** ✅ Test completed successfully\n`;
+          comment += `**Workflow:** ${context.workflow}\n`;
+          comment += `**Job:** test-status\n`;
+          comment += `**Event:** ${context.eventName}\n`;
+          comment += `**Actor:** ${context.actor}\n\n`;
+          comment += `*This is a test workflow to verify status checks are working.*`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+    
+    - name: Create summary
+      run: |
+        echo "## Test Status Check Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Test Details:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Workflow Name: Test Status Check" >> $GITHUB_STEP_SUMMARY
+        echo "- Job Name: test-status" >> $GITHUB_STEP_SUMMARY
+        echo "- Expected Status Check: Test Status Check / test-status" >> $GITHUB_STEP_SUMMARY
+        echo "- Event Type: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Actor: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ✅ All tests passed" >> $GITHUB_STEP_SUMMARY
