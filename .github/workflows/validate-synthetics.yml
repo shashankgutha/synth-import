@@ -8,13 +8,28 @@ on:
 
 permissions:
   actions: read
+  statuses: write
 
 jobs:
   validate-workflow:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Set status to pending
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: '${{ github.event.workflow_run.head_sha }}',
+            state: 'pending',
+            context: 'validate-workflow',
+            description: 'Validating workflow results...'
+          });
+    
     - name: Validate jobs
+      id: validate
       run: |
         # Get the workflow run conclusion directly from the event
         WORKFLOW_CONCLUSION="${{ github.event.workflow_run.conclusion }}"
@@ -25,8 +40,24 @@ jobs:
         # If the workflow succeeded, all required jobs succeeded
         if [[ "$WORKFLOW_CONCLUSION" == "success" ]]; then
           echo "✅ Import Synthetics Monitors workflow completed successfully"
-          exit 0
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "description=All jobs completed successfully" >> $GITHUB_OUTPUT
         else
           echo "❌ Import Synthetics Monitors workflow failed or was cancelled"
-          exit 1
+          echo "status=failure" >> $GITHUB_OUTPUT
+          echo "description=Workflow failed or was cancelled" >> $GITHUB_OUTPUT
         fi
+    
+    - name: Set final status
+      if: always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: '${{ github.event.workflow_run.head_sha }}',
+            state: '${{ steps.validate.outputs.status || "failure" }}',
+            context: 'validate-workflow',
+            description: '${{ steps.validate.outputs.description || "Validation failed" }}'
+          });
