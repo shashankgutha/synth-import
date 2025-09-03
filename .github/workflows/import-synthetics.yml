@@ -379,7 +379,7 @@ jobs:
         
         Updated configurations for the following monitor folders:
         ${{ needs.import-monitors.outputs.changed_folders }}
-        
+        git pull origin ${{ github.event.pull_request.head.ref }} --rebase
         This update ensures that the Elastic Agent configurations are synchronized with the latest monitor changes."
         git push origin HEAD:${{ github.event.pull_request.head.ref }}
     
