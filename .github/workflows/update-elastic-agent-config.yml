@@ -2,7 +2,7 @@ name: Update Elastic Agent Config
 
 on:
   workflow_run:
-    workflows: ["Import Synthetics Monitors"]
+    workflows: ["I"]
     types:
       - completed
 

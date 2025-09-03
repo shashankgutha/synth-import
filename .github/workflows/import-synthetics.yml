@@ -38,6 +38,9 @@ permissions:
 jobs:
   import-monitors:
     runs-on: ubuntu-latest
+    outputs:
+    changed_files: ${{ steps.changed-files.outputs.changed_files }}
+    live_import: ${{ env.LIVE_IMPORT }}
     
     steps:
     - name: Checkout repository
@@ -270,6 +273,8 @@ jobs:
       env:
         CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
     
+
+
     - name: Create deployment summary
       if: env.LIVE_IMPORT == 'true'
       run: |
@@ -281,6 +286,110 @@ jobs:
         echo "- Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
         echo "- Import Mode: Live" >> $GITHUB_STEP_SUMMARY
         echo "- Export Changes: ${{ steps.export-check.outputs.export_changes || 'false' }}" >> $GITHUB_STEP_SUMMARY
+
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Monitor Files Processed:**" >> $GITHUB_STEP_SUMMARY
         find monitors -path "monitors/*/*/*.json" -type f | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+
+  update-elastic-agent:
+    runs-on: ubuntu-latest
+    needs: import-monitors
+    if: github.event_name == 'pull_request' && needs.import-monitors.outputs.live_import == 'true' && needs.import-monitors.outputs.changed_files != ''
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyyaml
+    
+    - name: Extract changed folders and update elastic-agent.yml configurations
+      run: |
+        # Extract unique space_id/location combinations from changed files
+        changed_files="${{ needs.import-monitors.outputs.changed_files }}"
+        changed_folders=""
+        
+        if [ -n "$changed_files" ]; then
+          echo "Processing changed files: $changed_files"
+          
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              # Extract space_id and location from monitors/space_id/location/file.json
+              space_id=$(echo $file | cut -d'/' -f2)
+              location=$(echo $file | cut -d'/' -f3)
+              folder="$space_id/$location"
+              
+              # Only include folder if we haven't already added it
+              if [[ ! $changed_folders =~ $folder ]]; then
+                if [ -z "$changed_folders" ]; then
+                  changed_folders="$folder"
+                else
+                  changed_folders="$changed_folders $folder"
+                fi
+                echo "✅ Added folder: $folder"
+              fi
+            fi
+          done <<< "$changed_files"
+          
+          echo "Final changed folders: $changed_folders"
+          python scripts/update_elastic_agent_config.py "$changed_folders"
+        else
+          echo "No changed files to process"
+        fi
+    
+    - name: Check for changes in elastic-agent.yml files
+      id: check-changes
+      run: |
+        if git diff --quiet; then
+          echo "No changes detected in elastic-agent.yml files"
+          echo "has_changes=false" >> $GITHUB_OUTPUT
+        else
+          echo "Changes detected in elastic-agent.yml files"
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+          git diff --name-only
+        fi
+    
+    - name: Commit and push changes
+      if: steps.check-changes.outputs.has_changes == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .
+        git commit -m "Update elastic-agent.yml configurations for changed monitors
+        
+        Updated configurations for the following monitor folders:
+        ${{ needs.import-monitors.outputs.changed_folders }}
+        
+        This update ensures that the Elastic Agent configurations are synchronized with the latest monitor changes."
+        git push origin HEAD:${{ github.event.pull_request.head.ref }}
+    
+
+    
+    - name: Create deployment summary
+      if: always()
+      run: |
+        echo "## Elastic Agent Configuration Update Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Update Details:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Triggered by: Import Synthetics Monitors workflow" >> $GITHUB_STEP_SUMMARY
+        echo "- Event Type: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Actor: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "- Changes Detected: ${{ steps.check-changes.outputs.has_changes || 'false' }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Monitor Folders Processed:**" >> $GITHUB_STEP_SUMMARY
+        if [ -n "${{ needs.import-monitors.outputs.changed_folders }}" ]; then
+          echo "${{ needs.import-monitors.outputs.changed_folders }}" | tr ' ' '\n' | sed 's/^/- monitors\//' >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- No folders processed" >> $GITHUB_STEP_SUMMARY
+        fi
