@@ -39,8 +39,8 @@ jobs:
   import-monitors:
     runs-on: ubuntu-latest
     outputs:
-    changed_files: ${{ steps.changed-files.outputs.changed_files }}
-    live_import: ${{ env.LIVE_IMPORT }}
+      changed_files: ${{ steps.changed-files.outputs.changed_files }}
+      live_import: ${{ env.LIVE_IMPORT }}
     
     steps:
     - name: Checkout repository
