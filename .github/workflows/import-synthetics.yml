@@ -302,6 +302,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
+        ref: ${{ github.event.pull_request.head.ref }}
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -374,15 +375,21 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+        # Pull latest changes from the PR branch to get commits from import-monitors job
         git pull origin ${{ github.event.pull_request.head.ref }} --rebase
+        
         git add .
-        git commit -m "Update elastic-agent.yml configurations for changed monitors
-        
-        Updated configurations for the following monitor folders:
-        ${{ needs.import-monitors.outputs.changed_folders }}
-        
-        This update ensures that the Elastic Agent configurations are synchronized with the latest monitor changes."
-        git push origin HEAD:${{ github.event.pull_request.head.ref }}
+         git commit -m "Update elastic-agent.yml configurations
+         
+         This commit updates the elastic-agent.yml files for the following monitor locations:
+         ${{ steps.extract-folders.outputs.changed_folders }}
+         
+         Changes made by: ${{ github.actor }}
+         Triggered by: Pull Request #${{ github.event.pull_request.number }}
+         
+         The configurations have been automatically updated to reflect the latest monitor definitions.
+         This update ensures that the Elastic Agent configurations are synchronized with the latest monitor changes."
+         git push origin HEAD:${{ github.event.pull_request.head.ref }}
     
 
     
