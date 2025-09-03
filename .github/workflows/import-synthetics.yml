@@ -313,7 +313,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests
     
-    - name: Extract changed folders and update elastic-agent.yml configurations
+    - name: Extract changed folders
+      id: extract-folders
       run: |
         # Extract unique space_id/location combinations from changed files
         changed_files="${{ needs.import-monitors.outputs.changed_files }}"
@@ -341,11 +342,20 @@ jobs:
             fi
           done <<< "$changed_files"
           
+          echo "changed_folders=$changed_folders" >> $GITHUB_OUTPUT
           echo "Final changed folders: $changed_folders"
-          python .github/scripts/update-elastic-agent.py "$changed_folders"
         else
+          echo "changed_folders=" >> $GITHUB_OUTPUT
           echo "No changed files to process"
         fi
+    
+    - name: Update elastic-agent.yml configurations
+      if: steps.extract-folders.outputs.changed_folders != ''
+      env:
+        KIBANA_URL: ${{ secrets.KIBANA_URL }}
+        KIBANA_API_KEY: ${{ secrets.KIBANA_API_KEY }}      
+      run: |
+        python .github/scripts/update-elastic-agent.py "${{ steps.extract-folders.outputs.changed_folders }}"
     
     - name: Check for changes in elastic-agent.yml files
       id: check-changes
