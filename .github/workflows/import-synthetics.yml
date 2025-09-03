@@ -29,6 +29,8 @@ on:
       - main
     paths:
       - 'monitors/**/*.json'
+      - '.github/workflows/import-synthetics.yml'
+      - '.github/workflows/update-elastic-agent-config.yml'
 
 permissions:
   contents: write
@@ -37,6 +39,7 @@ permissions:
 
 jobs:
   import-monitors:
+    name: import-monitors
     runs-on: ubuntu-latest
     outputs:
       changed_files: ${{ steps.changed-files.outputs.changed_files }}
@@ -292,6 +295,7 @@ jobs:
         find monitors -path "monitors/*/*/*.json" -type f | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
 
   update-elastic-agent:
+    name: update-elastic-agent
     runs-on: ubuntu-latest
     needs: import-monitors
     if: github.event_name == 'pull_request' && needs.import-monitors.outputs.live_import == 'true' && needs.import-monitors.outputs.changed_files != ''
