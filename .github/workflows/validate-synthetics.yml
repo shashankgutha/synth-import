@@ -8,56 +8,33 @@ on:
 
 permissions:
   actions: read
-  statuses: write
+  contents: read
 
 jobs:
   validate-workflow:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Set status to pending
-      uses: actions/github-script@v7
+    - name: Checkout latest code
+      uses: actions/checkout@v4
       with:
-        script: |
-          github.rest.repos.createCommitStatus({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            sha: '${{ github.event.workflow_run.head_sha }}',
-            state: 'pending',
-            context: 'validate-workflow',
-            description: 'Validating workflow results...'
-          });
+        ref: ${{ github.event.workflow_run.head_branch }}
+        fetch-depth: 0
     
     - name: Validate jobs
-      id: validate
       run: |
         # Get the workflow run conclusion directly from the event
         WORKFLOW_CONCLUSION="${{ github.event.workflow_run.conclusion }}"
         
         echo "Workflow conclusion: $WORKFLOW_CONCLUSION"
+        echo "Validating on latest HEAD: $(git rev-parse HEAD)"
         
         # The workflow_run event gives us the overall conclusion
         # If the workflow succeeded, all required jobs succeeded
         if [[ "$WORKFLOW_CONCLUSION" == "success" ]]; then
           echo "✅ Import Synthetics Monitors workflow completed successfully"
-          echo "status=success" >> $GITHUB_OUTPUT
-          echo "description=All jobs completed successfully" >> $GITHUB_OUTPUT
+          exit 0
         else
           echo "❌ Import Synthetics Monitors workflow failed or was cancelled"
-          echo "status=failure" >> $GITHUB_OUTPUT
-          echo "description=Workflow failed or was cancelled" >> $GITHUB_OUTPUT
+          exit 1
         fi
-    
-    - name: Set final status
-      if: always()
-      uses: actions/github-script@v7
-      with:
-        script: |
-          github.rest.repos.createCommitStatus({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            sha: '${{ github.event.workflow_run.head_sha }}',
-            state: '${{ steps.validate.outputs.status || "failure" }}',
-            context: 'validate-workflow',
-            description: '${{ steps.validate.outputs.description || "Validation failed" }}'
-          });
